@@ -1,11 +1,20 @@
 const express = require('express');
 const pool = require('./db');
 const marked = require('marked');
+const cookieParser = require('cookie-parser');
+const { OAuth2Client } = require('google-auth-library');
+
 const app = express();
 const PORT = 3000;
 
+// ЗАМЕНИ ЭТО НА СВОЙ CLIENT_ID ОТ GOOGLE
+const CLIENT_ID = '48635369674-hpohhuqf92pkd7b56oj10rrt1t25la5v.apps.googleusercontent.com';
+
+const client = new OAuth2Client(CLIENT_ID);
+
 app.use(express.static('public'));
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/api/categories', async (req, res) => {
     const [categories] = await pool.query(`
@@ -58,6 +67,45 @@ app.get('/api/search', async (req, res) => {
 
     res.json(results);
 });
+
+app.post('/api/auth/google', async (req, res) => {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Missing token' });
+
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        const googleId = payload.sub;
+        const email = payload.email;
+        const name = payload.name;
+
+        const [users] = await pool.query(`SELECT * FROM users WHERE google_id = ?`, [googleId]);
+
+        let user;
+        if (users.length === 0) {
+            const [result] = await pool.query(`
+        INSERT INTO users (name, email, google_id)
+        VALUES (?, ?, ?)`, [name, email, googleId]);
+            user = { id: result.insertId, name };
+        } else {
+            // ✅ обновим updated_date
+            await pool.query(`UPDATE users SET updated_date = CURRENT_TIMESTAMP WHERE google_id = ?`, [googleId]);
+            user = users[0];
+        }
+
+        res.cookie('user_name', user.name, { httpOnly: false, sameSite: 'Lax' });
+        res.json({ name: user.name });
+
+    } catch (error) {
+        console.error('Auth error:', error);
+        res.status(401).json({ error: 'Invalid token' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
