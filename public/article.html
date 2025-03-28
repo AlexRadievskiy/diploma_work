@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Article</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container" id="article"></div>
+<script>
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+
+    fetch(`/api/articles/${id}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('article').innerHTML = `
+          <h1>${data.title}</h1>
+          <p><strong>Created:</strong> ${new Date(data.creation_date).toLocaleString()}</p>
+          <p><strong>Updated:</strong> ${new Date(data.update_date).toLocaleString()}</p>
+          <div>${data.text_html}</div>
+        `;
+        })
+        .catch(() => {
+            document.getElementById('article').innerHTML = '<p>Article not found or hidden</p>';
+        });
+</script>
+</body>
+</html>
