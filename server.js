@@ -222,6 +222,10 @@ app.post('/api/tickets/:id/reply', async (req, res) => {
         const [tickets] = await pool.query(`SELECT * FROM tickets WHERE id = ? AND user_id = ?`, [ticketId, userId]);
         if (tickets.length === 0) return res.status(403).json({ error: 'Access denied' });
 
+        if (tickets[0].status === 'closed') {
+            return res.status(400).json({ error: 'Cannot reply to a closed ticket' });
+        }
+
         await pool.query(`
             INSERT INTO ticket_messages (ticket_id, sender_role, message)
             VALUES (?, 'customer', ?)
@@ -233,6 +237,33 @@ app.post('/api/tickets/:id/reply', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+
+app.get('/api/tickets', async (req, res) => {
+    const { email, status } = req.query;
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+
+    try {
+        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+        if (users.length === 0) return res.status(403).json({ error: 'User not found' });
+        const userId = users[0].id;
+
+        const [tickets] = await pool.query(`
+            SELECT t.*, 
+                (SELECT message FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) AS last_message,
+                (SELECT created_date FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) AS last_message_date
+            FROM tickets t
+            WHERE t.user_id = ? ${status ? 'AND t.status = ?' : ''}
+            ORDER BY t.update_date DESC
+        `, status ? [userId, status] : [userId]);
+
+        res.json(tickets);
+    } catch (err) {
+        console.error('Ticket list error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
