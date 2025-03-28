@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Создание тикета</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Создать тикет</h1>
+    <form id="ticket-form">
+        <div>
+            <label for="category">Категория:</label>
+            <select id="category" name="category_id" required></select>
+        </div>
+
+        <div>
+            <label for="title">Заголовок:</label>
+            <input type="text" id="title" name="title" required />
+        </div>
+
+        <div>
+            <label for="description">Описание:</label>
+            <textarea id="description" name="description"></textarea>
+        </div>
+
+        <div id="dynamic-fields"></div>
+
+        <button type="submit">Отправить тикет</button>
+    </form>
+
+    <div id="success-message" style="display: none; margin-top: 20px;">
+        ✅ Тикет успешно создан! Проверьте вашу почту.
+    </div>
+</div>
+
+<script>
+    const userEmail = getCookie('user_email');
+    if (!userEmail) {
+        alert("Вы должны авторизоваться, чтобы создать тикет.");
+        window.location.href = "/";
+    }
+
+    async function loadCategories() {
+        const res = await fetch('/api/ticket-categories');
+        const categories = await res.json();
+
+        const select = document.getElementById('category');
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            select.appendChild(option);
+        });
+
+        loadFields(select.value);
+    }
+
+    async function loadFields(categoryId) {
+        const res = await fetch(`/api/ticket-fields?category_id=${categoryId}`);
+        const fields = await res.json();
+
+        const container = document.getElementById('dynamic-fields');
+        container.innerHTML = '';
+
+        fields.forEach(field => {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = `
+          <label>${field.field_label || field.field_name}:</label>
+          ${renderField(field)}
+        `;
+            container.appendChild(wrapper);
+        });
+    }
+
+    function renderField(field) {
+        const required = field.is_required ? 'required' : '';
+        const name = `field_${field.id}`;
+        switch (field.field_type) {
+            case 'text':
+            case 'number':
+            case 'date':
+                return `<input type="${field.field_type}" name="${name}" ${required} />`;
+            case 'textarea':
+                return `<textarea name="${name}" ${required}></textarea>`;
+            case 'select':
+                return `<select name="${name}" ${required}>
+            ${(JSON.parse(field.options || '[]')).map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+          </select>`;
+            case 'radio':
+                return (JSON.parse(field.options || '[]')).map(opt =>
+                    `<label><input type="radio" name="${name}" value="${opt}" ${required}/> ${opt}</label>`
+                ).join('<br>');
+            case 'checkbox':
+                return (JSON.parse(field.options || '[]')).map(opt =>
+                    `<label><input type="checkbox" name="${name}" value="${opt}"/> ${opt}</label>`
+                ).join('<br>');
+            default:
+                return '';
+        }
+    }
+
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    document.getElementById('category').addEventListener('change', (e) => {
+        loadFields(e.target.value);
+    });
+
+    document.getElementById('ticket-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const form = e.target;
+        const category_id = form.category_id.value;
+        const title = form.title.value;
+        const description = form.description.value;
+        const email = getCookie('user_email');
+
+        const dynamicInputs = Array.from(form.elements).filter(el => el.name.startsWith('field_'));
+        const fields = [];
+
+        dynamicInputs.forEach(input => {
+            const id = parseInt(input.name.replace('field_', ''));
+            let value = '';
+
+            if (input.type === 'checkbox') {
+                const checkboxes = form.querySelectorAll(`input[name="${input.name}"]:checked`);
+                value = Array.from(checkboxes).map(cb => cb.value).join(', ');
+            } else if (input.type === 'radio') {
+                const radio = form.querySelector(`input[name="${input.name}"]:checked`);
+                value = radio ? radio.value : '';
+            } else {
+                value = input.value;
+            }
+
+            fields.push({ id, value });
+        });
+
+        const res = await fetch('/api/tickets/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, title, category_id, description, fields })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            form.style.display = 'none';
+            document.getElementById('success-message').style.display = 'block';
+        } else {
+            alert('Ошибка при создании тикета');
+        }
+    });
+
+    loadCategories();
+</script>
+</body>
+</html>

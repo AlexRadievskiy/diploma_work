@@ -122,3 +122,18 @@ body {
 #sign-out-btn:hover {
     background-color: #ccc;
 }
+
+#create-ticket-btn {
+    padding: 8px 14px;
+    margin-left: 20px;
+    background-color: #007BFF;
+    border: none;
+    color: white;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#create-ticket-btn:hover {
+    background-color: #0056b3;
+}

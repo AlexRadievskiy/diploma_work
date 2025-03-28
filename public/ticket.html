@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тикет</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1 id="ticket-title">Тикет</h1>
+    <p><strong>Статус:</strong> <span id="ticket-status"></span></p>
+    <p><strong>Описание:</strong></p>
+    <p id="ticket-description"></p>
+
+    <h2>Диалог</h2>
+    <div id="messages" class="messages-box"></div>
+
+    <h3>Написать сообщение</h3>
+    <form id="message-form">
+        <textarea id="message-text" required placeholder="Введите сообщение..." rows="5" style="width: 100%"></textarea>
+        <button type="submit">Отправить</button>
+    </form>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const ticketId = params.get('id');
+    const userEmail = getCookie('user_email');
+
+    if (!ticketId || !userEmail) {
+        alert("Ошибка: недостаточно данных.");
+        window.location.href = "/";
+    }
+
+    async function loadTicket() {
+        const res = await fetch(`/api/tickets/${ticketId}?email=${encodeURIComponent(userEmail)}`);
+        const data = await res.json();
+
+        if (!data || !data.ticket) {
+            alert('Тикет не найден или доступ запрещён');
+            window.location.href = "/";
+            return;
+        }
+
+        document.getElementById('ticket-title').textContent = data.ticket.title;
+        document.getElementById('ticket-status').textContent = data.ticket.status;
+        document.getElementById('ticket-description').textContent = data.ticket.description;
+
+        const msgBox = document.getElementById('messages');
+        msgBox.innerHTML = '';
+
+        data.messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = msg.sender_role === 'support' ? 'msg support' : 'msg customer';
+            div.innerHTML = `<strong>${msg.sender_role === 'support' ? 'Техподдержка' : 'Вы'}:</strong><br>${msg.message}<br><small>${new Date(msg.created_date).toLocaleString()}</small>`;
+            msgBox.appendChild(div);
+        });
+    }
+
+    document.getElementById('message-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = document.getElementById('message-text').value.trim();
+        if (!text) return;
+
+        await fetch(`/api/tickets/${ticketId}/reply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: userEmail, message: text })
+        });
+
+        document.getElementById('message-text').value = '';
+        await loadTicket();
+    });
+
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    loadTicket();
+</script>
+</body>
+</html>

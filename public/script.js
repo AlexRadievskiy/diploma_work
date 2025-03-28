@@ -7,6 +7,20 @@ window.onload = async () => {
     }
 
     loadContent();
+
+    // Обработка кнопки "Создать тикет"
+    const createBtn = document.getElementById('create-ticket-btn');
+    if (createBtn) {
+        createBtn.addEventListener('click', () => {
+            const username = getCookie('user_name');
+            if (!username) {
+                document.getElementById('g_id_signin').scrollIntoView({ behavior: 'smooth' });
+                alert('Пожалуйста, авторизуйтесь, чтобы создать тикет.');
+                return;
+            }
+            window.location.href = 'create-ticket.html';
+        });
+    }
 };
 
 // Отображение имени и кнопки выхода
@@ -17,7 +31,6 @@ function showUser(name) {
   `;
 
     document.getElementById('sign-out-btn').addEventListener('click', () => {
-        // Удаляем куку, сбрасываем UI и перезагружаем страницу
         document.cookie = 'user_name=; Max-Age=0';
         location.reload();
     });
