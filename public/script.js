@@ -1,14 +1,16 @@
 window.onload = async () => {
     const username = getCookie('user_name');
+    const email = getCookie('user_email');
+
     if (username) {
         showUser(username);
+        checkSupportAgent(email); // проверка роли
     } else {
         initGoogleLogin();
     }
 
     loadContent();
 
-    // Обработка кнопки "Создать тикет"
     const createBtn = document.getElementById('create-ticket-btn');
     if (createBtn) {
         createBtn.addEventListener('click', () => {
@@ -23,20 +25,41 @@ window.onload = async () => {
     }
 };
 
-// Отображение имени и кнопки выхода
+// Отображение имени и кнопок выхода и панели поддержки
 function showUser(name) {
     document.getElementById('user-info').innerHTML = `
-    <span id="user-name">${name}</span>
-    <button id="sign-out-btn">Sign out</button>
-  `;
+        <span id="user-name">${name}</span>
+        <button id="sign-out-btn">Sign out</button>
+        <button id="support-panel-btn" style="display: none;">Панель поддержки</button>
+    `;
 
     document.getElementById('sign-out-btn').addEventListener('click', () => {
         document.cookie = 'user_name=; Max-Age=0';
+        document.cookie = 'user_email=; Max-Age=0';
         location.reload();
+    });
+
+    document.getElementById('support-panel-btn').addEventListener('click', () => {
+        window.location.href = 'support-panel.html';
     });
 }
 
-// Google кнопка входа
+// Проверка, является ли пользователь сотрудником поддержки
+async function checkSupportAgent(email) {
+    try {
+        const res = await fetch(`/api/is-support-agent?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+
+        if (data.isSupportAgent) {
+            const btn = document.getElementById('support-panel-btn');
+            if (btn) btn.style.display = 'inline-block';
+        }
+    } catch (err) {
+        console.error('Ошибка проверки роли поддержки:', err);
+    }
+}
+
+// Google вход
 function initGoogleLogin() {
     google.accounts.id.initialize({
         client_id: '48635369674-hpohhuqf92pkd7b56oj10rrt1t25la5v.apps.googleusercontent.com',
@@ -58,6 +81,7 @@ async function handleCredentialResponse(response) {
 
     const data = await res.json();
     showUser(data.name);
+    checkSupportAgent(getCookie('user_email'));
 }
 
 async function loadContent() {
@@ -71,12 +95,12 @@ async function loadContent() {
         const div = document.createElement('div');
         div.className = 'category';
         div.innerHTML = `
-      <h2>${cat.name}</h2>
-      <p>${cat.description || ''}</p>
-      <div class="article-list">
-        ${cat.articles.map(a => `<a href="article.html?id=${a.id}">${a.title}</a>`).join('')}
-      </div>
-    `;
+            <h2>${cat.name}</h2>
+            <p>${cat.description || ''}</p>
+            <div class="article-list">
+                ${cat.articles.map(a => `<a href="article.html?id=${a.id}">${a.title}</a>`).join('')}
+            </div>
+        `;
         container.appendChild(div);
     });
 
@@ -103,7 +127,7 @@ async function loadContent() {
     });
 }
 
-// Функция чтения cookie по имени
+// Получение cookie по имени
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : null;

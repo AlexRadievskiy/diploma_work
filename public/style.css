@@ -137,3 +137,22 @@ body {
 #create-ticket-btn:hover {
     background-color: #0056b3;
 }
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#support-panel-btn {
+    background-color: #ffc107;
+    padding: 6px 12px;
+    border: none;
+    text-decoration: none;
+    color: black;
+    border-radius: 4px;
+}
+
+#support-panel-btn.hidden {
+    display: none;
+}

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Support Chat</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .chat-message {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+        }
+        .chat-message .meta {
+            font-size: 0.85em;
+            color: #666;
+        }
+        .chat-message.customer {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .chat-message.support {
+            background-color: #d9f5dc;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .reply-form {
+            margin-top: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            resize: vertical;
+        }
+        .hidden {
+            display: none;
+        }
+        .admin-actions {
+            margin-top: 30px;
+            background: #f4f4f4;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .admin-actions textarea {
+            width: 100%;
+            height: 60px;
+            resize: vertical;
+        }
+        .admin-actions button,
+        .admin-actions select {
+            margin-top: 10px;
+        }
+        .field-block {
+            background: #eef1f8;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<h2>🎧 Support Chat</h2>
+
+<div id="ticket-info"></div>
+<hr>
+
+<div id="ticket-fields"></div>
+
+<div id="chat-messages"></div>
+
+<div id="reply-section" class="reply-form hidden">
+    <textarea id="reply-text" placeholder="Enter your message..."></textarea><br>
+    <button id="send-reply">Send</button>
+</div>
+
+<div class="admin-actions">
+    <h3>🔧 Ticket Admin Panel</h3>
+
+    <label for="ticket-status">Change status:</label>
+    <select id="ticket-status">
+        <option value="open">Open</option>
+        <option value="in_progress">In Progress</option>
+        <option value="closed">Closed</option>
+    </select>
+    <button id="change-status-btn">Change</button>
+
+    <br><br>
+
+    <label for="ticket-note"><strong>Internal note:</strong></label>
+    <textarea id="ticket-note" placeholder="Support-only notes..."></textarea>
+    <button id="save-note-btn">Save Note</button>
+
+    <br><br>
+    <button id="block-user-btn" style="background-color: #a80000; color: white;">🚫 Block User</button>
+</div>
+
+<script src="support-chat.js"></script>
+</body>
+</html>

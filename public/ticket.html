@@ -12,6 +12,8 @@
     <p><strong>Описание:</strong></p>
     <p id="ticket-description"></p>
 
+    <div id="ticket-fields-container"></div>
+
     <h2>Диалог</h2>
     <div id="messages" class="messages-box"></div>
 
@@ -20,6 +22,8 @@
         <textarea id="message-text" required placeholder="Введите сообщение..." rows="5" style="width: 100%"></textarea>
         <button type="submit">Отправить</button>
     </form>
+
+    <button id="close-ticket-btn" style="margin-top: 20px; background-color: #900; color: #fff;">Закрыть тикет</button>
 </div>
 
 <script>
@@ -46,15 +50,32 @@
         document.getElementById('ticket-status').textContent = data.ticket.status;
         document.getElementById('ticket-description').textContent = data.ticket.description;
 
+        // Отобразить поля тикета
+        const fieldBox = document.getElementById('ticket-fields-container');
+        fieldBox.innerHTML = '';
+        if (data.fields && data.fields.length) {
+            fieldBox.innerHTML = '<h3>Данные тикета</h3>';
+            data.fields.forEach(field => {
+                const p = document.createElement('p');
+                p.innerHTML = `<strong>${field.field_label}:</strong> ${field.field_value}`;
+                fieldBox.appendChild(p);
+            });
+        }
+
+        // Сообщения
         const msgBox = document.getElementById('messages');
         msgBox.innerHTML = '';
-
         data.messages.forEach(msg => {
             const div = document.createElement('div');
             div.className = msg.sender_role === 'support' ? 'msg support' : 'msg customer';
             div.innerHTML = `<strong>${msg.sender_role === 'support' ? 'Техподдержка' : 'Вы'}:</strong><br>${msg.message}<br><small>${new Date(msg.created_date).toLocaleString()}</small>`;
             msgBox.appendChild(div);
         });
+
+        // Скрыть форму и кнопку закрытия если тикет закрыт
+        const isClosed = data.ticket.status === 'closed';
+        document.getElementById('message-form').style.display = isClosed ? 'none' : 'block';
+        document.getElementById('close-ticket-btn').style.display = isClosed ? 'none' : 'inline-block';
     }
 
     document.getElementById('message-form').addEventListener('submit', async (e) => {
@@ -70,6 +91,19 @@
 
         document.getElementById('message-text').value = '';
         await loadTicket();
+    });
+
+    document.getElementById('close-ticket-btn').addEventListener('click', async () => {
+        if (!confirm('Вы уверены, что хотите закрыть тикет?')) return;
+
+        await fetch(`/api/tickets/${ticketId}/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: userEmail })
+        });
+
+        await loadTicket();
+        alert('Тикет закрыт');
     });
 
     function getCookie(name) {

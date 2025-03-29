@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Support Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .ticket-block {
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            resize: vertical;
+        }
+        .reply-form {
+            margin-top: 10px;
+        }
+        .filter-section {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<h2>🛠️ Support Panel</h2>
+
+<div class="filter-section">
+    <label for="filter-status">Filter by status:</label>
+    <select id="filter-status">
+        <option value="">All</option>
+        <option value="open">Open</option>
+        <option value="in_progress">In Progress</option>
+        <option value="closed">Closed</option>
+    </select>
+
+    <label for="search-email" style="margin-left: 20px;">Search by email:</label>
+    <input type="text" id="search-email" placeholder="user@example.com" />
+</div>
+
+<div id="ticket-container">Loading tickets...</div>
+
+<script src="support-panel.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@ const marked = require('marked');
 const cookieParser = require('cookie-parser');
 const { OAuth2Client } = require('google-auth-library');
 const { sendTicketConfirmation } = require('./mail');
-const { startListeningForEmails } = require('./imapService'); // Заменено здесь
+const { startListeningForEmails } = require('./imapService');
 
 const app = express();
 const PORT = 3000;
@@ -17,9 +17,9 @@ app.use(express.static('public'));
 app.use(express.json());
 app.use(cookieParser());
 
-// Запуск обработки новых писем каждые 30 секунд
 startListeningForEmails().catch(console.error);
 
+// ... статьи и категории
 app.get('/api/categories', async (req, res) => {
     const [categories] = await pool.query(`
         SELECT * FROM knowledge_base_categories
@@ -45,13 +45,423 @@ app.get('/api/articles/:id', async (req, res) => {
         WHERE id = ? AND is_hidden = 0
     `, [req.params.id]);
 
-    if (articles.length === 0) {
-        return res.status(404).json({ error: 'Article not found' });
-    }
+    if (articles.length === 0) return res.status(404).json({ error: 'Article not found' });
 
     const article = articles[0];
     article.text_html = marked.parse(article.text || '');
     res.json(article);
+});
+
+// ... поиск
+app.get('/api/search', async (req, res) => {
+    const query = req.query.q;
+    if (!query) return res.json([]);
+
+    const [results] = await pool.query(`
+        SELECT a.id, a.title, c.name as category_name
+        FROM knowledge_base_articles a
+        JOIN knowledge_base_categories c ON a.category_id = c.id
+        WHERE a.is_hidden = 0 AND c.is_hidden = 0
+          AND (LOWER(a.title) LIKE ? OR LOWER(a.text) LIKE ?)
+        ORDER BY a.priority DESC
+        LIMIT 10
+    `, [`%${query.toLowerCase()}%`, `%${query.toLowerCase()}%`]);
+
+    res.json(results);
+});
+
+// ... Google auth
+app.post('/api/auth/google', async (req, res) => {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Missing token' });
+
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        const googleId = payload.sub;
+        const email = payload.email;
+        const name = payload.name;
+
+        const [users] = await pool.query(`SELECT * FROM users WHERE google_id = ?`, [googleId]);
+
+        let user;
+        if (users.length === 0) {
+            const [result] = await pool.query(`
+                INSERT INTO users (name, email, google_id)
+                VALUES (?, ?, ?)`, [name, email, googleId]);
+            user = { id: result.insertId, name, email };
+        } else {
+            await pool.query(`UPDATE users SET updated_date = CURRENT_TIMESTAMP WHERE google_id = ?`, [googleId]);
+            user = users[0];
+        }
+
+        res.cookie('user_name', user.name, { httpOnly: false, sameSite: 'Lax' });
+        res.cookie('user_email', user.email, { httpOnly: false, sameSite: 'Lax' });
+        res.json({ name: user.name });
+
+    } catch (error) {
+        console.error('Auth error:', error);
+        res.status(401).json({ error: 'Invalid token' });
+    }
+});
+
+// ... создание тикета
+app.post('/api/tickets/create', async (req, res) => {
+    const { email, title, category_id, description, fields } = req.body;
+
+    if (!email || !title || !category_id || !fields) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+        const [users] = await pool.query(`SELECT * FROM users WHERE email = ?`, [email]);
+        if (users.length === 0) return res.status(400).json({ error: 'User not found' });
+
+        const user = users[0];
+        if (user.is_blocked === 1) {
+            return res.status(403).json({ error: 'Your account is blocked. You cannot create tickets.' });
+        }
+
+        const [result] = await pool.query(`
+            INSERT INTO tickets (user_id, category_id, title, description)
+            VALUES (?, ?, ?, ?)`, [user.id, category_id, title, description || null]);
+
+        const ticketId = result.insertId;
+
+        for (const field of fields) {
+            await pool.query(`
+                INSERT INTO ticket_field_values (ticket_id, field_id, field_value)
+                VALUES (?, ?, ?)`, [ticketId, field.id, field.value]);
+        }
+
+        await sendTicketConfirmation(email, title, ticketId);
+
+        res.json({ success: true, ticket_id: ticketId });
+    } catch (err) {
+        console.error('Ticket creation error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+// ... список тикетов (для пользователя)
+app.get('/api/tickets', async (req, res) => {
+    const { email, status } = req.query;
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+
+    try {
+        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+        if (users.length === 0) return res.status(403).json({ error: 'User not found' });
+
+        const userId = users[0].id;
+
+        const [tickets] = await pool.query(`
+            SELECT t.*, 
+                (SELECT message FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) AS last_message,
+                (SELECT created_date FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) AS last_message_date
+            FROM tickets t
+            WHERE t.user_id = ? ${status ? 'AND t.status = ?' : ''}
+            ORDER BY t.update_date DESC
+        `, status ? [userId, status] : [userId]);
+
+        res.json(tickets);
+    } catch (err) {
+        console.error('Ticket list error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ... просмотр одного тикета
+app.get('/api/tickets/:id', async (req, res) => {
+    const ticketId = req.params.id;
+    const userEmail = req.query.email;
+    const forSupport = req.query.forSupport === 'true';
+
+    if (!ticketId) return res.status(400).json({ error: 'Missing ticket id' });
+
+    try {
+        const [ticketRows] = await pool.query(`
+            SELECT t.*, u.email as user_email
+            FROM tickets t
+            JOIN users u ON t.user_id = u.id
+            WHERE t.id = ?
+        `, [ticketId]);
+
+        if (ticketRows.length === 0) return res.status(404).json({ error: 'Ticket not found' });
+
+        const ticket = ticketRows[0];
+
+        // Проверка доступа
+        if (!forSupport) {
+            const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [userEmail]);
+            if (users.length === 0 || users[0].id !== ticket.user_id) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+        }
+
+        // Сообщения
+        const [messages] = await pool.query(`
+            SELECT sender_role, message, created_date
+            FROM ticket_messages
+            WHERE ticket_id = ?
+            ORDER BY created_date ASC
+        `, [ticketId]);
+
+        // Динамические поля
+        const [fields] = await pool.query(`
+            SELECT tf.field_label, tf.field_type, tfv.field_value
+            FROM ticket_field_values tfv
+            JOIN ticket_fields tf ON tfv.field_id = tf.id
+            WHERE tfv.ticket_id = ?
+            ORDER BY tf.sort_order
+        `, [ticketId]);
+
+        res.json({ ticket, messages, fields });
+    } catch (err) {
+        console.error('Ticket fetch error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+
+
+// ... ответ от пользователя
+app.post('/api/tickets/:id/reply', async (req, res) => {
+    const ticketId = req.params.id;
+    const { email, message } = req.body;
+
+    if (!ticketId || !email || !message) return res.status(400).json({ error: 'Missing data' });
+
+    try {
+        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+        if (users.length === 0) return res.status(403).json({ error: 'User not found' });
+
+        const userId = users[0].id;
+
+        const [tickets] = await pool.query(`SELECT * FROM tickets WHERE id = ? AND user_id = ?`, [ticketId, userId]);
+        if (tickets.length === 0) return res.status(403).json({ error: 'Access denied' });
+
+        if (tickets[0].status === 'closed') {
+            return res.status(400).json({ error: 'Cannot reply to a closed ticket' });
+        }
+
+        await pool.query(`
+            INSERT INTO ticket_messages (ticket_id, sender_role, message)
+            VALUES (?, 'customer', ?)`, [ticketId, message]);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Reply error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/tickets/:id/close', async (req, res) => {
+    const ticketId = req.params.id;
+    const { email } = req.body;
+
+    if (!email || !ticketId) return res.status(400).json({ error: 'Missing data' });
+
+    try {
+        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+        if (!users.length) return res.status(403).json({ error: 'User not found' });
+
+        const userId = users[0].id;
+
+        const [tickets] = await pool.query(`SELECT * FROM tickets WHERE id = ? AND user_id = ?`, [ticketId, userId]);
+        if (!tickets.length) return res.status(403).json({ error: 'Access denied' });
+
+        await pool.query(`UPDATE tickets SET status = 'closed' WHERE id = ?`, [ticketId]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Ticket close error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+// ... проверка на саппорт агента
+app.get('/api/is-support-agent', async (req, res) => {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+
+    try {
+        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+        if (users.length === 0) return res.json({ isSupportAgent: false });
+
+        const userId = users[0].id;
+
+        const [agents] = await pool.query(`SELECT access_level FROM support_staff WHERE user_id = ?`, [userId]);
+        if (agents.length === 0) return res.json({ isSupportAgent: false });
+
+        return res.json({ isSupportAgent: true, access_level: agents[0].access_level });
+    } catch (err) {
+        console.error('Support check error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ... список тикетов для саппортов
+app.get('/api/support/tickets', async (req, res) => {
+    const { email, status } = req.query;
+
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+
+    try {
+        const [userRows] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+        if (userRows.length === 0) return res.status(403).json({ error: 'User not found' });
+
+        const userId = userRows[0].id;
+
+        const [staff] = await pool.query(`SELECT id FROM support_staff WHERE user_id = ?`, [userId]);
+        if (staff.length === 0) return res.status(403).json({ error: 'Not support staff' });
+
+        let query = `
+            SELECT 
+                t.id, 
+                t.title, 
+                t.status,
+                t.creation_date,
+                t.update_date,
+                COALESCE(u.name, 'No Name') AS user_name,
+                u.email as user_email,
+                (SELECT message FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) as last_message,
+                (SELECT created_date FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) as last_message_date
+            FROM tickets t
+            JOIN users u ON t.user_id = u.id
+        `;
+        const params = [];
+
+        if (status) {
+            query += ` WHERE t.status = ?`;
+            params.push(status);
+        }
+
+        query += ` ORDER BY t.update_date DESC`;
+
+        const [tickets] = await pool.query(query, params);
+        res.json(tickets);
+    } catch (err) {
+        console.error('Ошибка получения тикетов:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ... ответ от саппорта
+app.post('/api/support/tickets/:id/reply', async (req, res) => {
+    const ticketId = req.params.id;
+    const { support_email, message } = req.body;
+
+    if (!support_email || !message) return res.status(400).json({ error: 'Missing fields' });
+
+    try {
+        const [staff] = await pool.query(`
+            SELECT s.id FROM support_staff s
+            JOIN users u ON s.user_id = u.id
+            WHERE u.email = ?`, [support_email]);
+
+        if (staff.length === 0) return res.status(403).json({ error: 'Access denied' });
+
+        const supportId = staff[0].id;
+
+        const [ticket] = await pool.query(`SELECT * FROM tickets WHERE id = ?`, [ticketId]);
+        if (ticket.length === 0) return res.status(404).json({ error: 'Ticket not found' });
+
+        await pool.query(`
+            INSERT INTO ticket_messages (ticket_id, sender_role, message, support_staff_id)
+            VALUES (?, 'support', ?, ?)`, [ticketId, message, supportId]);
+
+        await pool.query(`UPDATE tickets SET status = 'in_progress' WHERE id = ?`, [ticketId]);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Ошибка при ответе сотрудника:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/support/tickets/:id/note', async (req, res) => {
+    const ticketId = req.params.id;
+    const { note, support_email } = req.body;
+
+    if (!support_email) return res.status(400).json({ error: 'Missing support email' });
+
+    try {
+        const [staff] = await pool.query(`
+            SELECT s.id FROM support_staff s
+            JOIN users u ON s.user_id = u.id
+            WHERE u.email = ?
+        `, [support_email]);
+
+        if (staff.length === 0) return res.status(403).json({ error: 'Access denied' });
+
+        await pool.query(`UPDATE tickets SET note = ? WHERE id = ?`, [note, ticketId]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Ошибка при сохранении заметки:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/support/tickets/:id/status', async (req, res) => {
+    const ticketId = req.params.id;
+    const { status, support_email } = req.body;
+
+    if (!support_email || !['open', 'in_progress', 'closed'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    try {
+        const [staff] = await pool.query(`
+            SELECT s.id FROM support_staff s
+            JOIN users u ON s.user_id = u.id
+            WHERE u.email = ?
+        `, [support_email]);
+
+        if (staff.length === 0) return res.status(403).json({ error: 'Access denied' });
+
+        await pool.query(`UPDATE tickets SET status = ? WHERE id = ?`, [status, ticketId]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Ошибка при смене статуса:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/support/users/block', async (req, res) => {
+    const { email, support_email } = req.body;
+
+    if (!email || !support_email) {
+        return res.status(400).json({ error: 'Missing email or support_email' });
+    }
+
+    try {
+        const [staff] = await pool.query(`
+            SELECT s.id FROM support_staff s
+            JOIN users u ON s.user_id = u.id
+            WHERE u.email = ?
+        `, [support_email]);
+
+        if (staff.length === 0) return res.status(403).json({ error: 'Access denied' });
+
+        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+        if (users.length === 0) return res.status(404).json({ error: 'User not found' });
+
+        const userId = users[0].id;
+
+        await pool.query(`UPDATE users SET is_blocked = 1 WHERE id = ?`, [userId]);
+        await pool.query(`UPDATE tickets SET status = 'closed' WHERE user_id = ?`, [userId]);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Ошибка при блокировке пользователя:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 app.get('/api/ticket-categories', async (req, res) => {
@@ -78,188 +488,7 @@ app.get('/api/ticket-fields', async (req, res) => {
 
         res.json(rows);
     } catch (err) {
-        console.error('Ошибка получения полей:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.get('/api/search', async (req, res) => {
-    const query = req.query.q;
-    if (!query) return res.json([]);
-
-    const [results] = await pool.query(`
-        SELECT a.id, a.title, c.name as category_name
-        FROM knowledge_base_articles a
-        JOIN knowledge_base_categories c ON a.category_id = c.id
-        WHERE a.is_hidden = 0 AND c.is_hidden = 0
-          AND (LOWER(a.title) LIKE ? OR LOWER(a.text) LIKE ?)
-        ORDER BY a.priority DESC
-        LIMIT 10
-    `, [`%${query.toLowerCase()}%`, `%${query.toLowerCase()}%`]);
-
-    res.json(results);
-});
-
-app.post('/api/auth/google', async (req, res) => {
-    const { credential } = req.body;
-    if (!credential) return res.status(400).json({ error: 'Missing token' });
-
-    try {
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: CLIENT_ID,
-        });
-
-        const payload = ticket.getPayload();
-        const googleId = payload.sub;
-        const email = payload.email;
-        const name = payload.name;
-
-        const [users] = await pool.query(`SELECT * FROM users WHERE google_id = ?`, [googleId]);
-
-        let user;
-        if (users.length === 0) {
-            const [result] = await pool.query(`
-                INSERT INTO users (name, email, google_id)
-                VALUES (?, ?, ?)`, [name, email, googleId]);
-            user = { id: result.insertId, name };
-        } else {
-            await pool.query(`UPDATE users SET updated_date = CURRENT_TIMESTAMP WHERE google_id = ?`, [googleId]);
-            user = users[0];
-        }
-
-        res.cookie('user_name', user.name, { httpOnly: false, sameSite: 'Lax' });
-        res.cookie('user_email', user.email, { httpOnly: false, sameSite: 'Lax' });
-        res.json({ name: user.name });
-
-    } catch (error) {
-        console.error('Auth error:', error);
-        res.status(401).json({ error: 'Invalid token' });
-    }
-});
-
-app.post('/api/tickets/create', async (req, res) => {
-    const { email, title, category_id, description, fields } = req.body;
-
-    if (!email || !title || !category_id || !fields) {
-        return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    try {
-        const [users] = await pool.query(`SELECT * FROM users WHERE email = ?`, [email]);
-        if (users.length === 0) {
-            return res.status(400).json({ error: 'User not found' });
-        }
-        const user = users[0];
-
-        const [result] = await pool.query(`
-            INSERT INTO tickets (user_id, category_id, title, description)
-            VALUES (?, ?, ?, ?)
-        `, [user.id, category_id, title, description || null]);
-
-        const ticketId = result.insertId;
-
-        for (const field of fields) {
-            await pool.query(`
-                INSERT INTO ticket_field_values (ticket_id, field_id, field_value)
-                VALUES (?, ?, ?)
-            `, [ticketId, field.id, field.value]);
-        }
-
-        await sendTicketConfirmation(email, title, ticketId);
-
-        res.json({ success: true, ticket_id: ticketId });
-    } catch (err) {
-        console.error('Ticket creation error:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.get('/api/tickets/:id', async (req, res) => {
-    const ticketId = req.params.id;
-    const userEmail = req.query.email;
-
-    if (!ticketId || !userEmail) {
-        return res.status(400).json({ error: 'Missing ticket id or email' });
-    }
-
-    try {
-        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [userEmail]);
-        if (users.length === 0) return res.status(403).json({ error: 'User not found' });
-        const userId = users[0].id;
-
-        const [tickets] = await pool.query(`SELECT * FROM tickets WHERE id = ? AND user_id = ?`, [ticketId, userId]);
-        if (tickets.length === 0) return res.status(403).json({ error: 'Access denied' });
-
-        const [messages] = await pool.query(`
-            SELECT sender_role, message, created_date
-            FROM ticket_messages
-            WHERE ticket_id = ?
-            ORDER BY created_date ASC
-        `, [ticketId]);
-
-        res.json({ ticket: tickets[0], messages });
-    } catch (err) {
-        console.error('Ticket fetch error:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-app.post('/api/tickets/:id/reply', async (req, res) => {
-    const ticketId = req.params.id;
-    const { email, message } = req.body;
-
-    if (!ticketId || !email || !message) {
-        return res.status(400).json({ error: 'Missing data' });
-    }
-
-    try {
-        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
-        if (users.length === 0) return res.status(403).json({ error: 'User not found' });
-
-        const userId = users[0].id;
-
-        const [tickets] = await pool.query(`SELECT * FROM tickets WHERE id = ? AND user_id = ?`, [ticketId, userId]);
-        if (tickets.length === 0) return res.status(403).json({ error: 'Access denied' });
-
-        if (tickets[0].status === 'closed') {
-            return res.status(400).json({ error: 'Cannot reply to a closed ticket' });
-        }
-
-        await pool.query(`
-            INSERT INTO ticket_messages (ticket_id, sender_role, message)
-            VALUES (?, 'customer', ?)
-        `, [ticketId, message]);
-
-        res.json({ success: true });
-    } catch (err) {
-        console.error('Reply error:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-
-app.get('/api/tickets', async (req, res) => {
-    const { email, status } = req.query;
-    if (!email) return res.status(400).json({ error: 'Missing email' });
-
-    try {
-        const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
-        if (users.length === 0) return res.status(403).json({ error: 'User not found' });
-        const userId = users[0].id;
-
-        const [tickets] = await pool.query(`
-            SELECT t.*, 
-                (SELECT message FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) AS last_message,
-                (SELECT created_date FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) AS last_message_date
-            FROM tickets t
-            WHERE t.user_id = ? ${status ? 'AND t.status = ?' : ''}
-            ORDER BY t.update_date DESC
-        `, status ? [userId, status] : [userId]);
-
-        res.json(tickets);
-    } catch (err) {
-        console.error('Ticket list error:', err);
+        console.error('Ошибка получения полей тикета:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
