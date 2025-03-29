@@ -3,49 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <title>Support Panel</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
+        .filter-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
         }
+
+        .filter-section label {
+            font-weight: 600;
+        }
+
+        .filter-section select, .filter-section input {
+            padding: 8px;
+            border-radius: 8px;
+            border: 2px solid #ced4da;
+            transition: border-color 0.3s;
+        }
+
+        .filter-section select:focus, .filter-section input:focus {
+            outline: none;
+            border-color: #495057;
+        }
+
+        .tickets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
         .ticket-block {
-            background: #f9f9f9;
-            border: 1px solid #ccc;
+            position: relative;
+            background: #ffffff;
             border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
         }
-        textarea {
-            width: 100%;
-            resize: vertical;
+
+        .ticket-block::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            border-radius: 10px 0 0 10px;
         }
-        .reply-form {
+
+        .ticket-block:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .ticket-block h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #343a40;
+        }
+
+        .ticket-block p {
+            margin: 4px 0;
+            flex-grow: 1;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: 600;
+            color: white;
+            font-size: 13px;
+            margin-bottom: 10px;
+            align-self: flex-start;
+        }
+
+        .status.open {
+            background-color: #28a745;
+        }
+
+        .status.in_progress {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .status.closed {
+            background-color: #dc3545;
+        }
+
+        .open-ticket-btn {
+            align-self: flex-start;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
             margin-top: 10px;
         }
-        .filter-section {
-            margin-bottom: 20px;
+
+        .open-ticket-btn:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        /* Цветные полоски статусов */
+        .ticket-block.open::before {
+            background-color: #28a745;
+        }
+
+        .ticket-block.in_progress::before {
+            background-color: #ffc107;
+        }
+
+        .ticket-block.closed::before {
+            background-color: #dc3545;
+        }
+
+        .ticket-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ticket-header h4 {
+            margin: 0;
+            line-height: 1; /* Добавлено */
+        }
+
+        .status {
+            white-space: nowrap;
+            display: inline-flex; /* Добавлено */
+            align-items: center;  /* Добавлено */
+            justify-content: center; /* Добавлено */
         }
     </style>
 </head>
 <body>
-<h2>🛠️ Support Panel</h2>
 
-<div class="filter-section">
-    <label for="filter-status">Filter by status:</label>
-    <select id="filter-status">
-        <option value="">All</option>
-        <option value="open">Open</option>
-        <option value="in_progress">In Progress</option>
-        <option value="closed">Closed</option>
-    </select>
+<header class="header">
+    <div class="container header-content">
+        <h1 onclick="location.href='http://localhost:3000'" style="cursor:pointer;">Help Centre</h1>
+        <div id="user-info">
+            <div id="g_id_signin"></div>
+            <span id="user-name"></span>
+            <button id="create-ticket-btn">Create Support Request</button>
+            <a id="support-panel-btn" href="support-panel.html">Support Panel</a>
+        </div>
+    </div>
+</header>
 
-    <label for="search-email" style="margin-left: 20px;">Search by email:</label>
-    <input type="text" id="search-email" placeholder="user@example.com" />
-</div>
+<main class="container">
+    <h2>🛠️ Support Panel</h2>
 
-<div id="ticket-container">Loading tickets...</div>
+    <div class="filter-section">
+        <label for="filter-status">Filter by status:</label>
+        <select id="filter-status">
+            <option value="">All</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="closed">Closed</option>
+        </select>
 
+        <label for="search-email">Search by email:</label>
+        <input type="text" id="search-email" placeholder="user@example.com" />
+    </div>
+
+    <div id="ticket-container" class="tickets-grid">Loading tickets...</div>
+</main>
+
+<footer class="footer">
+    <div class="container footer-content">
+        <p>&copy; 2025 Tech. Support Site. No Rights Reserved.</p>
+    </div>
+</footer>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="script.js"></script>
 <script src="support-panel.js"></script>
+<script>
+    function renderTickets(tickets) {
+        const ticketContainer = document.getElementById('ticket-container');
+        if (!tickets.length) {
+            ticketContainer.innerHTML = '<p>No tickets found.</p>';
+            return;
+        }
+
+        ticketContainer.innerHTML = '';
+        tickets.forEach(ticket => {
+            const div = document.createElement('div');
+            div.className = `ticket-block ${ticket.status.toLowerCase().replace(' ', '_')}`;
+            div.innerHTML = `
+                <h4>[#${ticket.id}] ${ticket.title}</h4>
+                <p><strong>User:</strong> ${ticket.user_name} (${ticket.user_email})</p>
+                <p><strong>Created:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
+                <p><strong>Last update:</strong> ${new Date(ticket.last_message_date || ticket.update_date).toLocaleString()}</p>
+                <span class="status ${ticket.status.toLowerCase().replace(' ', '_')}">${ticket.status}</span>
+                <p><strong>Last message:</strong> ${ticket.last_message ? ticket.last_message.slice(0, 80) + '...' : 'No messages yet'}</p>
+                <button class="open-ticket-btn" data-id="${ticket.id}">
+                    <i class="fas fa-comments"></i> Open Chat
+                </button>
+            `;
+            ticketContainer.appendChild(div);
+        });
+
+        document.querySelectorAll('.open-ticket-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                window.location.href = `support-chat.html?id=${id}`;
+            });
+        });
+    }
+</script>
+
 </body>
 </html>

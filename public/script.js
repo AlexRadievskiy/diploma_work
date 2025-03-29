@@ -165,12 +165,13 @@ async function loadTicketPage() {
 
 function showUser(name) {
     const userInfoEl = document.getElementById('user-info');
-    if (!userInfoEl) return; // 💡 если элемента нет — выходим
+    if (!userInfoEl) return;
 
     userInfoEl.innerHTML = `
         <span id="user-name">${name}</span>
         <button id="sign-out-btn">Sign out</button>
-        <button id="support-panel-btn" style="display: none;">Панель поддержки</button>
+        <button id="support-panel-btn" style="display: none;">Support Panel</button>
+        <button id="create-ticket-btn">Create Support Request</button>
     `;
 
     document.getElementById('sign-out-btn').addEventListener('click', () => {
@@ -182,8 +183,11 @@ function showUser(name) {
     document.getElementById('support-panel-btn').addEventListener('click', () => {
         window.location.href = 'support-panel.html';
     });
-}
 
+    document.getElementById('create-ticket-btn').addEventListener('click', () => {
+        window.location.href = 'create-ticket.html';
+    });
+}
 
 async function checkSupportAgent(email) {
     try {
@@ -235,9 +239,10 @@ async function loadContent() {
         div.innerHTML = `
             <h2>${cat.name}</h2>
             <p>${cat.description || ''}</p>
-            <div class="article-list">
-                ${cat.articles.map(a => `<a href="article.html?id=${a.id}">${a.title}</a>`).join('')}
-            </div>
+            <ul class="article-list">
+                 ${cat.articles.map(a => `<li><a href="article.html?id=${a.id}">${a.title}</a></li>`).join('')}
+            </ul>
+
         `;
         container.appendChild(div);
     });

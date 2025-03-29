@@ -3,105 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <title>Support Chat</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+        }
+        .chat-page {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
         }
+        .left-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .right-column {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-container {
+            border: 1px solid #eaeaea;
+            padding: 15px;
+            border-radius: 10px;
+            height: 600px;
+            overflow-y: auto;
+            background: #f9f9f9;
+        }
         .chat-message {
-            border-bottom: 1px solid #ddd;
-            padding: 10px 0;
-        }
-        .chat-message .meta {
-            font-size: 0.85em;
-            color: #666;
-        }
-        .chat-message.customer {
-            background-color: #f1f1f1;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 10px 15px;
+            border-radius: 12px;
+            max-width: 70%;
+            margin-bottom: 10px;
+            animation: fadeIn 0.3s;
         }
         .chat-message.support {
-            background-color: #d9f5dc;
-            padding: 10px;
-            border-radius: 5px;
+            background-color: #f0f0f0;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        .chat-message.customer {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .chat-message .meta {
+            font-size: 0.7em;
+            opacity: 0.7;
+            margin-top: 5px;
         }
         .reply-form {
-            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
         }
-        textarea {
-            width: 100%;
-            height: 80px;
-            resize: vertical;
+        .reply-form textarea, .reply-form input {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ced4da;
         }
-        input[type="file"] {
-            margin-top: 10px;
+        .reply-form button {
+            align-self: flex-end;
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
         }
-        .hidden {
-            display: none;
-        }
-        .admin-actions {
-            margin-top: 30px;
-            background: #f4f4f4;
+        .admin-actions, .ticket-info, .ticket-fields {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
             padding: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .admin-actions h3, .ticket-info h3, .ticket-fields h4 {
+            margin-bottom: 8px;
+            color: #343a40;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #555;
+        }
+        .form-group select, .form-group textarea {
+            padding: 8px;
+            border-radius: 6px;
             border: 1px solid #ccc;
-            border-radius: 8px;
+            transition: border-color 0.3s;
         }
-        .admin-actions textarea {
-            width: 100%;
-            height: 60px;
-            resize: vertical;
+        .form-group select:focus, .form-group textarea:focus {
+            border-color: #007bff;
+            outline: none;
         }
-        .admin-actions button,
-        .admin-actions select {
-            margin-top: 10px;
+        .admin-actions button {
+            align-self: flex-start;
+            padding: 7px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            background-color: #007bff;
+            transition: opacity 0.3s;
+        }
+        .admin-actions button:hover {
+            opacity: 0.9;
+        }
+        .danger-btn {
+            background-color: #dc3545 !important;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         .field-block {
             background: #eef1f8;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-<h2>🎧 Support Chat</h2>
 
-<div id="ticket-info"></div>
-<hr>
+<header class="header">
+    <div class="container header-content">
+        <h1 onclick="location.href='http://localhost:3000'" style="cursor:pointer;">Help Centre</h1>
+        <div id="user-info">
+            <span id="user-name"></span>
+            <button id="create-ticket-btn">Create Support Request</button>
+            <a id="support-panel-btn" href="support-panel.html">Support Panel</a>
+        </div>
+    </div>
+</header>
 
-<div id="ticket-fields"></div>
+<main class="chat-page container">
+    <div class="left-column">
+        <div id="ticket-info" class="ticket-info"></div>
+        <div id="ticket-fields" class="ticket-fields"></div>
 
-<div id="chat-messages"></div>
+        <div class="admin-actions">
+            <h3><i class="fas fa-tools"></i> Ticket Admin Panel</h3>
+            <div class="form-group">
+                <label for="ticket-status">Status:</label>
+                <select id="ticket-status">
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="closed">Closed</option>
+                </select>
+                <button id="change-status-btn">Change</button>
+            </div>
+            <div class="form-group">
+                <label for="ticket-note">Internal note:</label>
+                <textarea id="ticket-note" placeholder="Support-only notes..."></textarea>
+                <button id="save-note-btn">Save Note</button>
+            </div>
+            <button id="block-user-btn" class="danger-btn"><i class="fas fa-ban"></i> Block User</button>
+        </div>
+    </div>
 
-<div id="reply-section" class="reply-form hidden">
-    <textarea id="reply-text" placeholder="Enter your message..."></textarea><br>
-    <input type="file" id="message-file"><br>
-    <button id="send-reply">Send</button>
-</div>
+    <div class="right-column">
+        <div id="chat-messages" class="chat-container"></div>
+        <div id="reply-section" class="reply-form hidden">
+            <textarea id="reply-text" placeholder="Enter your message..."></textarea>
+            <input type="file" id="message-file">
+            <button id="send-reply">Send <i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</main>
 
-<div class="admin-actions">
-    <h3>🔧 Ticket Admin Panel</h3>
+<footer class="footer">
+    <div class="container footer-content">
+        <p>&copy; 2025 Tech. Support Site. No Rights Reserved.</p>
+    </div>
+</footer>
 
-    <label for="ticket-status">Change status:</label>
-    <select id="ticket-status">
-        <option value="open">Open</option>
-        <option value="in_progress">In Progress</option>
-        <option value="closed">Closed</option>
-    </select>
-    <button id="change-status-btn">Change</button>
-
-    <br><br>
-
-    <label for="ticket-note"><strong>Internal note:</strong></label>
-    <textarea id="ticket-note" placeholder="Support-only notes..."></textarea>
-    <button id="save-note-btn">Save Note</button>
-
-    <br><br>
-    <button id="block-user-btn" style="background-color: #a80000; color: white;">🚫 Block User</button>
-</div>
-
+<script src="script.js"></script>
 <script src="support-chat.js"></script>
+
 </body>
 </html>

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderTickets(tickets) {
+        const ticketContainer = document.getElementById('ticket-container');
         if (!tickets.length) {
             ticketContainer.innerHTML = '<p>No tickets found.</p>';
             return;
@@ -25,18 +26,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         ticketContainer.innerHTML = '';
         tickets.forEach(ticket => {
+            const statusClass = ticket.status.toLowerCase().replace(' ', '_');
+
             const div = document.createElement('div');
-            div.className = 'ticket-block';
+            div.className = `ticket-block ${statusClass}`;
             div.innerHTML = `
+            <div class="ticket-header">
+                <span class="status ${statusClass}">${ticket.status}</span>
                 <h4>[#${ticket.id}] ${ticket.title}</h4>
-                <p><strong>User:</strong> ${ticket.user_name} (${ticket.user_email})</p>
-                <p><strong>Created:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
-                <p><strong>Last update:</strong> ${new Date(ticket.last_message_date || ticket.update_date).toLocaleString()}</p>
-                <p><strong>Status:</strong> ${ticket.status}</p>
-                <p><strong>Last message:</strong> ${ticket.last_message ? ticket.last_message.slice(0, 100) : 'No messages yet'}...</p>
-                <button class="open-ticket-btn" data-id="${ticket.id}">Open</button>
-                <hr/>
-            `;
+            </div>
+
+            <p><strong>User:</strong> ${ticket.user_name} (${ticket.user_email})</p>
+            <p><strong>Created:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
+            <p><strong>Last update:</strong> ${new Date(ticket.last_message_date || ticket.update_date).toLocaleString()}</p>
+            <p><strong>Last message:</strong> ${ticket.last_message ? ticket.last_message.slice(0, 80) + '...' : 'No messages yet'}</p>
+            <button class="open-ticket-btn" data-id="${ticket.id}">
+                <i class="fas fa-comments"></i> Open Chat
+            </button>
+        `;
             ticketContainer.appendChild(div);
         });
 

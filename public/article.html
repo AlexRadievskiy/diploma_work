@@ -3,10 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <title>Article</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #007bff;
+            transition: color 0.3s;
+            margin-right: 10px;
+        }
+
+        .back-btn:hover {
+            color: #0056b3;
+        }
+
+        .article-header {
+            display: flex;
+            align-items: center;
+        }
+
+        .article-header h1 {
+            cursor: pointer;
+            color: inherit;
+            transition: color 0.3s;
+        }
+
+        .article-header h1:hover {
+            color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-<div class="container" id="article"></div>
+
+<header class="header">
+    <div class="container header-content">
+        <h1 onclick="location.href='http://localhost:3000'" style="cursor:pointer;">Help Centre</h1>
+        <div id="user-info">
+            <div id="g_id_signin"></div>
+            <span id="user-name"></span>
+            <button id="create-ticket-btn">Create Support Request</button>
+            <a id="support-panel-btn" href="support-panel.html" class="hidden">Support Panel</a>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="article-header">
+        <button class="back-btn" onclick="location.href='http://localhost:3000/'">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h1 id="article-title"></h1>
+    </div>
+    <p><strong>Created:</strong> <span id="created-date"></span></p>
+    <p><strong>Updated:</strong> <span id="updated-date"></span></p>
+    <div id="article-content"></div>
+</main>
+
+<footer class="footer">
+    <div class="container footer-content">
+        <p>&copy; 2025 Tech. Support Site. No Rights Reserved.</p>
+    </div>
+</footer>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="script.js"></script>
 <script>
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
@@ -14,16 +77,15 @@
     fetch(`/api/articles/${id}`)
         .then(res => res.json())
         .then(data => {
-            document.getElementById('article').innerHTML = `
-          <h1>${data.title}</h1>
-          <p><strong>Created:</strong> ${new Date(data.creation_date).toLocaleString()}</p>
-          <p><strong>Updated:</strong> ${new Date(data.update_date).toLocaleString()}</p>
-          <div>${data.text_html}</div>
-        `;
+            document.getElementById('article-title').textContent = data.title;
+            document.getElementById('created-date').textContent = new Date(data.creation_date).toLocaleString();
+            document.getElementById('updated-date').textContent = new Date(data.update_date).toLocaleString();
+            document.getElementById('article-content').innerHTML = data.text_html;
         })
         .catch(() => {
-            document.getElementById('article').innerHTML = '<p>Article not found or hidden</p>';
+            document.getElementById('article-content').innerHTML = '<p>Article not found or hidden</p>';
         });
 </script>
+
 </body>
 </html>
