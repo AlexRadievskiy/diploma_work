@@ -6,6 +6,9 @@ const cookieParser = require('cookie-parser');
 const { OAuth2Client } = require('google-auth-library');
 const { sendTicketConfirmation } = require('./mail');
 const { startListeningForEmails } = require('./imapService');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = 3000;
@@ -13,10 +16,24 @@ const PORT = 3000;
 const CLIENT_ID = '48635369674-hpohhuqf92pkd7b56oj10rrt1t25la5v.apps.googleusercontent.com';
 const client = new OAuth2Client(CLIENT_ID);
 
+// Создание папки для загрузок, если не существует
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+        const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, unique + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage });
+
 app.use(express.static('public'));
 app.use(express.json());
 app.use(cookieParser());
 
+// Запуск слушателя писем
 startListeningForEmails().catch(console.error);
 
 // ... статьи и категории
@@ -203,12 +220,27 @@ app.get('/api/tickets/:id', async (req, res) => {
             }
         }
 
-        // Сообщения
+        // Сообщения с псевдонимом агента (если есть)
         const [messages] = await pool.query(`
-            SELECT sender_role, message, created_date
-            FROM ticket_messages
-            WHERE ticket_id = ?
-            ORDER BY created_date ASC
+            SELECT m.id, m.sender_role, m.message, m.created_date, s.agent_name
+            FROM ticket_messages m
+            LEFT JOIN support_staff s ON m.support_staff_id = s.id
+            WHERE m.ticket_id = ?
+        `, [ticketId]);
+
+        // Вложения также с agent_name
+        const [attachments] = await pool.query(`
+            SELECT 
+                a.message_id, 
+                a.file_path, 
+                a.file_name, 
+                m.sender_role, 
+                m.created_date,
+                s.agent_name
+            FROM ticket_message_attachments a
+            JOIN ticket_messages m ON a.message_id = m.id
+            LEFT JOIN support_staff s ON m.support_staff_id = s.id
+            WHERE m.ticket_id = ?
         `, [ticketId]);
 
         // Динамические поля
@@ -220,7 +252,34 @@ app.get('/api/tickets/:id', async (req, res) => {
             ORDER BY tf.sort_order
         `, [ticketId]);
 
-        res.json({ ticket, messages, fields });
+        // Объединение сообщений и вложений в единый поток
+        const events = [];
+
+        for (const msg of messages) {
+            events.push({
+                type: 'message',
+                sender_role: msg.sender_role,
+                message: msg.message,
+                created_date: msg.created_date,
+                agent_name: msg.agent_name || null
+            });
+        }
+
+        for (const att of attachments) {
+            events.push({
+                type: 'attachment',
+                sender_role: att.sender_role,
+                file_path: att.file_path,
+                file_name: att.file_name,
+                created_date: att.created_date,
+                agent_name: att.agent_name || null
+            });
+        }
+
+        // Сортировка по дате
+        events.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+
+        res.json({ ticket, fields, events });
     } catch (err) {
         console.error('Ticket fetch error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -228,38 +287,50 @@ app.get('/api/tickets/:id', async (req, res) => {
 });
 
 
-
-
-// ... ответ от пользователя
-app.post('/api/tickets/:id/reply', async (req, res) => {
+app.post('/api/tickets/:id/reply', upload.single('file'), async (req, res) => {
     const ticketId = req.params.id;
     const { email, message } = req.body;
+    const file = req.file;
 
-    if (!ticketId || !email || !message) return res.status(400).json({ error: 'Missing data' });
+    if (!ticketId || !email || (!message && !file)) {
+        return res.status(400).json({ error: 'Missing data' });
+    }
 
     try {
         const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
         if (users.length === 0) return res.status(403).json({ error: 'User not found' });
-
         const userId = users[0].id;
 
         const [tickets] = await pool.query(`SELECT * FROM tickets WHERE id = ? AND user_id = ?`, [ticketId, userId]);
         if (tickets.length === 0) return res.status(403).json({ error: 'Access denied' });
-
         if (tickets[0].status === 'closed') {
             return res.status(400).json({ error: 'Cannot reply to a closed ticket' });
         }
 
-        await pool.query(`
+        const [result] = await pool.query(`
             INSERT INTO ticket_messages (ticket_id, sender_role, message)
-            VALUES (?, 'customer', ?)`, [ticketId, message]);
+            VALUES (?, 'customer', ?)`, [ticketId, message || '']);
+
+        const messageId = result.insertId;
+
+        if (file) {
+            await pool.query(`
+                INSERT INTO ticket_message_attachments (message_id, file_path, file_name)
+                VALUES (?, ?, ?)
+            `, [
+                messageId,
+                '/uploads/' + file.filename,
+                file.originalname
+            ]);
+        }
 
         res.json({ success: true });
     } catch (err) {
-        console.error('Reply error:', err);
+        console.error('Reply with file error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 app.post('/api/tickets/:id/close', async (req, res) => {
     const ticketId = req.params.id;
@@ -353,37 +424,50 @@ app.get('/api/support/tickets', async (req, res) => {
 });
 
 // ... ответ от саппорта
-app.post('/api/support/tickets/:id/reply', async (req, res) => {
+app.post('/api/support/tickets/:id/reply', upload.single('file'), async (req, res) => {
     const ticketId = req.params.id;
     const { support_email, message } = req.body;
 
-    if (!support_email || !message) return res.status(400).json({ error: 'Missing fields' });
+    if (!support_email || (!message && !req.file)) {
+        return res.status(400).json({ error: 'Missing message or file or support_email' });
+    }
 
     try {
-        const [staff] = await pool.query(`
+        const [[staff]] = await pool.query(`
             SELECT s.id FROM support_staff s
             JOIN users u ON s.user_id = u.id
-            WHERE u.email = ?`, [support_email]);
+            WHERE u.email = ?
+        `, [support_email]);
 
-        if (staff.length === 0) return res.status(403).json({ error: 'Access denied' });
+        if (!staff) return res.status(403).json({ error: 'Access denied' });
 
-        const supportId = staff[0].id;
+        const [ticketRows] = await pool.query(`SELECT * FROM tickets WHERE id = ?`, [ticketId]);
+        if (ticketRows.length === 0) return res.status(404).json({ error: 'Ticket not found' });
 
-        const [ticket] = await pool.query(`SELECT * FROM tickets WHERE id = ?`, [ticketId]);
-        if (ticket.length === 0) return res.status(404).json({ error: 'Ticket not found' });
-
-        await pool.query(`
+        const [msgResult] = await pool.query(`
             INSERT INTO ticket_messages (ticket_id, sender_role, message, support_staff_id)
-            VALUES (?, 'support', ?, ?)`, [ticketId, message, supportId]);
+            VALUES (?, 'support', ?, ?)
+        `, [ticketId, message || '', staff.id]);
+
+        const messageId = msgResult.insertId;
+
+        if (req.file) {
+            const filePath = `/uploads/${req.file.filename}`;
+            await pool.query(`
+                INSERT INTO ticket_message_attachments (message_id, file_path, file_name)
+                VALUES (?, ?, ?)
+            `, [messageId, filePath, req.file.originalname]);
+        }
 
         await pool.query(`UPDATE tickets SET status = 'in_progress' WHERE id = ?`, [ticketId]);
 
         res.json({ success: true });
     } catch (err) {
-        console.error('Ошибка при ответе сотрудника:', err);
+        console.error('Support reply error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 app.post('/api/support/tickets/:id/note', async (req, res) => {
     const ticketId = req.params.id;
@@ -493,6 +577,95 @@ app.get('/api/ticket-fields', async (req, res) => {
     }
 });
 
+// API загрузки вложений пользователем
+app.post('/api/tickets/:id/upload', upload.single('file'), async (req, res) => {
+    const ticketId = req.params.id;
+    const email = req.body.email;
+    const role = req.body.role; // 'customer' или 'support'
+
+    if (!email || !role || !['customer', 'support'].includes(role)) {
+        return res.status(400).json({ error: 'Missing or invalid role/email' });
+    }
+
+    try {
+        let userId;
+        if (role === 'customer') {
+            const [users] = await pool.query(`SELECT id FROM users WHERE email = ?`, [email]);
+            if (!users.length) return res.status(403).json({ error: 'User not found' });
+            userId = users[0].id;
+
+            const [tickets] = await pool.query(`SELECT * FROM tickets WHERE id = ? AND user_id = ?`, [ticketId, userId]);
+            if (!tickets.length) return res.status(403).json({ error: 'Access denied' });
+        } else {
+            const [staff] = await pool.query(`
+                SELECT s.id FROM support_staff s
+                JOIN users u ON s.user_id = u.id
+                WHERE u.email = ?
+            `, [email]);
+            if (!staff.length) return res.status(403).json({ error: 'Access denied' });
+            userId = staff[0].id;
+        }
+
+        const [result] = await pool.query(`
+            INSERT INTO ticket_messages (ticket_id, sender_role, support_staff_id)
+            VALUES (?, ?, ?)
+        `, [
+            ticketId,
+            role,
+            role === 'support' ? userId : null
+        ]);
+
+        const messageId = result.insertId;
+
+        await pool.query(`
+            INSERT INTO ticket_message_attachments (message_id, file_path, file_name)
+            VALUES (?, ?, ?)
+        `, [messageId, `/uploads/${req.file.filename}`, req.file.originalname]);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Upload error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// API загрузки вложений сотрудником
+app.post('/api/support/tickets/:id/upload', upload.single('attachment'), async (req, res) => {
+    const ticketId = req.params.id;
+    const support_email = req.body.email;
+
+    if (!req.file || !ticketId || !support_email) {
+        return res.status(400).json({ error: 'Missing file or data' });
+    }
+
+    try {
+        const [staff] = await pool.query(`
+            SELECT s.id FROM support_staff s
+            JOIN users u ON s.user_id = u.id
+            WHERE u.email = ?
+        `, [support_email]);
+
+        if (staff.length === 0) return res.status(403).json({ error: 'Access denied' });
+
+        const [ticket] = await pool.query(`SELECT * FROM tickets WHERE id = ?`, [ticketId]);
+        if (ticket.length === 0) return res.status(404).json({ error: 'Ticket not found' });
+
+        const [msgResult] = await pool.query(`
+            INSERT INTO ticket_messages (ticket_id, sender_role, support_staff_id, message)
+            VALUES (?, 'support', ?, '')
+        `, [ticketId, staff[0].id]);
+
+        await pool.query(`
+            INSERT INTO ticket_message_attachments (message_id, file_path, file_name)
+            VALUES (?, ?, ?)
+        `, [msgResult.insertId, `/uploads/${req.file.filename}`, req.file.originalname]);
+
+        res.json({ success: true, file: `/uploads/${req.file.filename}` });
+    } catch (err) {
+        console.error('Support upload error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

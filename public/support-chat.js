@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const replySection = document.getElementById('reply-section');
     const replyText = document.getElementById('reply-text');
     const sendBtn = document.getElementById('send-reply');
+    const fileInput = document.getElementById('message-file');
 
     const noteTextarea = document.getElementById('ticket-note');
     const saveNoteBtn = document.getElementById('save-note-btn');
@@ -32,8 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentTicket = data.ticket;
 
         renderTicketInfo(data.ticket);
-        renderMessages(data.messages);
         renderFields(data.fields);
+        renderMessages(data.events);
 
         if (data.ticket.status !== 'closed') {
             replySection.classList.remove('hidden');
@@ -53,45 +54,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         noteTextarea.value = ticket.note || '';
     }
 
-    function renderMessages(messages) {
-        chatMessagesDiv.innerHTML = '';
-        for (const msg of messages) {
-            const div = document.createElement('div');
-            div.classList.add('chat-message', msg.sender_role);
-            div.innerHTML = `
-                <div class="meta">${msg.sender_role === 'customer' ? 'Customer' : 'Support'} - ${new Date(msg.created_date).toLocaleString()}</div>
-                <div class="body">${escapeHtml(msg.message)}</div>
-            `;
-            chatMessagesDiv.appendChild(div);
-        }
-    }
-
     function renderFields(fields) {
         ticketFieldsDiv.innerHTML = '<h4>📝 Ticket Fields</h4>';
         for (const field of fields) {
             const div = document.createElement('div');
             div.className = 'field-block';
-            div.innerHTML = `
-                <strong>${field.field_label}:</strong><br>
-                <span>${escapeHtml(field.field_value)}</span>
-            `;
+            div.innerHTML = `<strong>${field.field_label}:</strong><br><span>${escapeHtml(field.field_value)}</span>`;
             ticketFieldsDiv.appendChild(div);
+        }
+    }
+
+    function renderMessages(events) {
+        chatMessagesDiv.innerHTML = '';
+        for (const evt of events) {
+            const div = document.createElement('div');
+            div.className = 'chat-message ' + evt.sender_role;
+
+            let sender = evt.sender_role === 'support'
+                ? (evt.agent_name || 'Support')
+                : 'Customer';
+
+            if (evt.type === 'message') {
+                if (!evt.message) continue;
+                div.innerHTML = `
+                    <div class="meta">${sender} - ${new Date(evt.created_date).toLocaleString()}</div>
+                    <div class="body">${escapeHtml(evt.message)}</div>
+                `;
+            } else if (evt.type === 'attachment') {
+                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(evt.file_path);
+                div.innerHTML = `
+                    <div class="meta">${sender} - ${new Date(evt.created_date).toLocaleString()}</div>
+                    <div class="body">
+                        ${isImage
+                    ? `<img src="${evt.file_path}" style="max-width:300px;"><br>`
+                    : `<a href="${evt.file_path}" target="_blank">${evt.file_name}</a><br>`}
+                    </div>
+                `;
+            }
+
+            chatMessagesDiv.appendChild(div);
         }
     }
 
     sendBtn.addEventListener('click', async () => {
         const message = replyText.value.trim();
-        if (!message) return;
+        const file = fileInput.files[0];
+
+        if (!message && !file) return;
+
+        const formData = new FormData();
+        formData.append('support_email', supportEmail);
+        if (message) formData.append('message', message);
+        if (file) formData.append('file', file);
 
         const res = await fetch(`/api/support/tickets/${ticketId}/reply`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ support_email: supportEmail, message })
+            body: formData
         });
 
         const result = await res.json();
         if (result.success) {
             replyText.value = '';
+            fileInput.value = '';
             await fetchTicketData();
         } else {
             alert(result.error || 'Error sending message');

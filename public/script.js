@@ -4,7 +4,7 @@ window.onload = async () => {
 
     if (username) {
         showUser(username);
-        checkSupportAgent(email); // проверка роли
+        checkSupportAgent(email);
     } else {
         initGoogleLogin();
     }
@@ -14,7 +14,6 @@ window.onload = async () => {
     const createBtn = document.getElementById('create-ticket-btn');
     if (createBtn) {
         createBtn.addEventListener('click', () => {
-            const username = getCookie('user_name');
             if (!username) {
                 document.getElementById('g_id_signin').scrollIntoView({ behavior: 'smooth' });
                 alert('Пожалуйста, авторизуйтесь, чтобы создать тикет.');
@@ -23,11 +22,152 @@ window.onload = async () => {
             window.location.href = 'create-ticket.html';
         });
     }
+
+    // Если это ticket.html
+    if (window.location.pathname.endsWith('ticket.html')) {
+        await loadTicketPage();
+    }
 };
 
-// Отображение имени и кнопок выхода и панели поддержки
+async function loadTicketPage() {
+    const params = new URLSearchParams(window.location.search);
+    const ticketId = params.get('id');
+    const userEmail = getCookie('user_email');
+
+    if (!ticketId || !userEmail) {
+        alert("Ошибка: недостаточно данных.");
+        window.location.href = "/";
+        return;
+    }
+
+    async function loadTicket() {
+        const res = await fetch(`/api/tickets/${ticketId}?email=${encodeURIComponent(userEmail)}`);
+        const data = await res.json();
+
+        if (!data || !data.ticket) {
+            alert('Тикет не найден или доступ запрещён');
+            window.location.href = "/";
+            return;
+        }
+
+        document.getElementById('ticket-title').textContent = data.ticket.title;
+        document.getElementById('ticket-status').textContent = data.ticket.status;
+        document.getElementById('ticket-description').textContent = data.ticket.description;
+
+        const msgBox = document.getElementById('messages');
+        msgBox.innerHTML = '';
+
+        // Поля тикета
+        if (data.fields && data.fields.length > 0) {
+            const fieldBox = document.createElement('div');
+            fieldBox.classList.add('field-box');
+            data.fields.forEach(f => {
+                const el = document.createElement('p');
+                el.innerHTML = `<strong>${f.field_label}:</strong> ${f.field_value}`;
+                fieldBox.appendChild(el);
+            });
+            msgBox.appendChild(fieldBox);
+        }
+
+// Сообщения и файлы из events
+        data.events.forEach(evt => {
+            const div = document.createElement('div');
+            div.className = 'msg ' + (evt.sender_role === 'support' ? 'support' : 'customer');
+
+            // Определение имени отправителя
+            let senderLabel = 'Вы';
+            if (evt.sender_role === 'support') {
+                senderLabel = evt.agent_name ? evt.agent_name : 'Техподдержка';
+            }
+
+            if (evt.type === 'message') {
+                div.innerHTML = `
+            <strong>${senderLabel}:</strong><br>
+            ${evt.message}<br>
+            <small>${new Date(evt.created_date).toLocaleString()}</small>
+        `;
+            } else if (evt.type === 'attachment') {
+                const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(evt.file_path);
+                div.innerHTML = `
+            <strong>${senderLabel}:</strong><br>
+            ${isImage
+                    ? `<img src="${evt.file_path}" style="max-width:300px;"><br>`
+                    : `<a href="${evt.file_path}" target="_blank">${evt.file_name}</a><br>`}
+            <small>${new Date(evt.created_date).toLocaleString()}</small>
+        `;
+            }
+
+            msgBox.appendChild(div);
+        });
+
+
+        // Кнопка закрытия тикета
+        if (data.ticket.status !== 'closed') {
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Закрыть тикет';
+            closeBtn.onclick = async () => {
+                if (!confirm('Вы уверены, что хотите закрыть тикет?')) return;
+                const res = await fetch(`/api/support/tickets/${ticketId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'closed', support_email: userEmail })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Тикет закрыт');
+                    await loadTicket();
+                }
+            };
+            document.querySelector('.container').appendChild(closeBtn);
+        }
+    }
+
+
+    document.getElementById('message-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Блокируем отправку, если тикет уже закрыт
+        const statusText = document.getElementById('ticket-status').textContent;
+        if (statusText === 'closed') {
+            alert('Тикет закрыт. Нельзя отправить сообщение.');
+            return;
+        }
+
+        const text = document.getElementById('message-text').value.trim();
+        const fileInput = document.getElementById('message-file');
+
+        if (!text && (!fileInput || !fileInput.files.length)) return;
+
+        const formData = new FormData();
+        formData.append('email', userEmail);
+        formData.append('message', text);
+        if (fileInput && fileInput.files.length) {
+            formData.append('file', fileInput.files[0]);
+        }
+
+        const res = await fetch(`/api/tickets/${ticketId}/reply`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (res.ok) {
+            document.getElementById('message-text').value = '';
+            if (fileInput) fileInput.value = '';
+            await loadTicket();
+        } else {
+            alert('Ошибка при отправке сообщения');
+        }
+    });
+
+
+    await loadTicket();
+}
+
 function showUser(name) {
-    document.getElementById('user-info').innerHTML = `
+    const userInfoEl = document.getElementById('user-info');
+    if (!userInfoEl) return; // 💡 если элемента нет — выходим
+
+    userInfoEl.innerHTML = `
         <span id="user-name">${name}</span>
         <button id="sign-out-btn">Sign out</button>
         <button id="support-panel-btn" style="display: none;">Панель поддержки</button>
@@ -44,12 +184,11 @@ function showUser(name) {
     });
 }
 
-// Проверка, является ли пользователь сотрудником поддержки
+
 async function checkSupportAgent(email) {
     try {
         const res = await fetch(`/api/is-support-agent?email=${encodeURIComponent(email)}`);
         const data = await res.json();
-
         if (data.isSupportAgent) {
             const btn = document.getElementById('support-panel-btn');
             if (btn) btn.style.display = 'inline-block';
@@ -59,7 +198,6 @@ async function checkSupportAgent(email) {
     }
 }
 
-// Google вход
 function initGoogleLogin() {
     google.accounts.id.initialize({
         client_id: '48635369674-hpohhuqf92pkd7b56oj10rrt1t25la5v.apps.googleusercontent.com',
@@ -127,7 +265,6 @@ async function loadContent() {
     });
 }
 
-// Получение cookie по имени
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : null;
