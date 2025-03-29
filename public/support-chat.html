@@ -149,16 +149,7 @@
 </head>
 <body>
 
-<header class="header">
-    <div class="container header-content">
-        <h1 onclick="location.href='http://localhost:3000'" style="cursor:pointer;">Help Centre</h1>
-        <div id="user-info">
-            <span id="user-name"></span>
-            <button id="create-ticket-btn">Create Support Request</button>
-            <a id="support-panel-btn" href="support-panel.html">Support Panel</a>
-        </div>
-    </div>
-</header>
+<header class="header"></header>
 
 <main class="chat-page container">
     <div class="left-column">
@@ -195,12 +186,10 @@
     </div>
 </main>
 
-<footer class="footer">
-    <div class="container footer-content">
-        <p>&copy; 2025 Tech. Support Site. No Rights Reserved.</p>
-    </div>
-</footer>
+<footer class="footer"></footer>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="loadHeaderFooter.js"></script>
 <script src="script.js"></script>
 <script src="support-chat.js"></script>
 

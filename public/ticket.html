@@ -1,33 +1,174 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Тикет</title>
+    <title>User Ticket Chat</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+
+        .container {
+            flex: 1;
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px 0;
+            display: flex;
+            gap: 20px;
+        }
+        .left-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .right-column {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        .ticket-info, .ticket-fields, .ticket-actions {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        .status {
+            color: #fff !important;
+        }
+
+        .status.open {
+            background-color: #28a745 !important;
+        }
+
+        .status.in_progress {
+            background-color: #ffc107 !important;
+            color: #212529 !important;
+        }
+
+        .status.closed {
+            background-color: #dc3545 !important;
+        }
+        .messages-box {
+            flex: 1;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            overflow-y: auto;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+        }
+        .msg {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+        }
+        .msg.customer {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .msg.support {
+            background-color: #f0f0f0;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        .msg .meta {
+            font-size: 0.75em;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+        .reply-form {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .reply-form textarea, .reply-form input {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+        }
+        .reply-form button {
+            align-self: flex-end;
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }
+        footer.footer {
+            background-color: #343a40;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        .field-box p {
+            background: #eef1f8;
+            padding: 6px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+        }
+        .close-ticket-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #dc3545;
+            color: #fff;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
+
+<header class="header"></header>
+
 <div class="container">
-    <h1 id="ticket-title">Тикет</h1>
-    <p><strong>Статус:</strong> <span id="ticket-status"></span></p>
-    <p><strong>Описание:</strong></p>
-    <p id="ticket-description"></p>
+    <div class="left-column">
+        <div class="ticket-info">
+            <h2 id="ticket-title"></h2>
+            <p><strong>Status:</strong> <span id="ticket-status" class="status"></span></p>
+            <p id="ticket-description"></p>
+        </div>
 
-    <div id="ticket-fields-container"></div>
+        <div class="ticket-fields">
+            <h3><i class="fas fa-list"></i> Ticket Fields</h3>
+            <div id="ticket-fields"></div> <!-- Правильный id -->
+        </div>
 
-    <h2>Диалог</h2>
-    <div id="messages" class="messages-box"></div>
+        <div class="ticket-actions">
+            <button class="close-ticket-btn" id="close-ticket-btn">Закрыть тикет</button> <!-- Реальная кнопка -->
+        </div>
+    </div>
 
-    <h3>Написать сообщение</h3>
-    <form id="message-form" enctype="multipart/form-data">
-        <textarea id="message-text" placeholder="Введите сообщение..." rows="5" style="width: 100%"></textarea>
-        <br>
-        <input type="file" id="message-file" accept="image/*">
-        <br>
-        <button type="submit">Отправить</button>
-    </form>
+    <div class="right-column">
+        <div id="messages" class="messages-box"></div>
 
+        <form id="message-form" class="reply-form">
+            <textarea id="message-text" placeholder="Введите сообщение..." rows="4"></textarea>
+            <input type="file" id="message-file" accept="image/*">
+            <button type="submit">Отправить <i class="fas fa-paper-plane"></i></button>
+        </form>
+    </div>
 </div>
 
+
+<footer class="footer"></footer>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="loadHeaderFooter.js"></script>
 <script src="script.js"></script>
+
 </body>
 </html>

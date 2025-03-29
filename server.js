@@ -33,6 +33,10 @@ app.use(express.static('public'));
 app.use(express.json());
 app.use(cookieParser());
 
+
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/templates', express.static(path.join(__dirname, 'templates')));
+
 // Запуск слушателя писем
 startListeningForEmails().catch(console.error);
 
@@ -102,6 +106,7 @@ app.post('/api/auth/google', async (req, res) => {
         const googleId = payload.sub;
         const email = payload.email;
         const name = payload.name;
+        const picture = payload.picture; // ✅ ВАЖНО!
 
         const [users] = await pool.query(`SELECT * FROM users WHERE google_id = ?`, [googleId]);
 
@@ -110,7 +115,7 @@ app.post('/api/auth/google', async (req, res) => {
             const [result] = await pool.query(`
                 INSERT INTO users (name, email, google_id)
                 VALUES (?, ?, ?)`, [name, email, googleId]);
-            user = { id: result.insertId, name, email };
+            user = { id: result.insertId, name, email, picture };
         } else {
             await pool.query(`UPDATE users SET updated_date = CURRENT_TIMESTAMP WHERE google_id = ?`, [googleId]);
             user = users[0];
@@ -118,13 +123,19 @@ app.post('/api/auth/google', async (req, res) => {
 
         res.cookie('user_name', user.name, { httpOnly: false, sameSite: 'Lax' });
         res.cookie('user_email', user.email, { httpOnly: false, sameSite: 'Lax' });
-        res.json({ name: user.name });
+        res.cookie('user_avatar', picture, { httpOnly: false, sameSite: 'Lax' });
+
+        res.json({
+            name: user.name,
+            picture // ✅ добавляем в ответ!
+        });
 
     } catch (error) {
         console.error('Auth error:', error);
         res.status(401).json({ error: 'Invalid token' });
     }
 });
+
 
 // ... создание тикета
 app.post('/api/tickets/create', async (req, res) => {

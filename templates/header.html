@@ -1,0 +1,23 @@
+<header class="header">
+    <div class="container header-content">
+        <h1 class="logo" onclick="location.href='http://localhost:3000'" style="cursor:pointer;">Help Centre</h1>
+
+        <div id="user-info" class="user-area">
+            <div id="g_id_signin"></div>
+
+            <div id="authenticated-actions" class="hidden auth-block">
+                <div class="user-profile">
+                    <img id="user-avatar" src="" alt="avatar" class="user-avatar hidden" />
+                    <span id="user-name" class="user-name"></span>
+                </div>
+
+                <div class="nav-buttons">
+                    <a id="my-tickets-btn" href="/my-tickets.html" class="btn"><i class="fas fa-list"></i> My Tickets</a>
+                    <button id="create-ticket-btn" class="btn"><i class="fas fa-plus-circle"></i> Create</button>
+                    <a id="support-panel-btn" href="/support-panel.html" class="btn hidden"><i class="fas fa-tools"></i> Panel</a>
+                    <button id="sign-out-btn" class="btn logout"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>

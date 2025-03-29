@@ -51,30 +51,30 @@ async function loadTicketPage() {
         }
 
         document.getElementById('ticket-title').textContent = data.ticket.title;
-        document.getElementById('ticket-status').textContent = data.ticket.status;
+        const statusElement = document.getElementById('ticket-status');
+        statusElement.textContent = data.ticket.status;
+        statusElement.className = 'status ' + data.ticket.status.toLowerCase().replace(' ', '_');
         document.getElementById('ticket-description').textContent = data.ticket.description;
 
         const msgBox = document.getElementById('messages');
         msgBox.innerHTML = '';
 
-        // Поля тикета
+        // Ticket Fields слева
+        const fieldContainer = document.getElementById('ticket-fields');
+        fieldContainer.innerHTML = '';
         if (data.fields && data.fields.length > 0) {
-            const fieldBox = document.createElement('div');
-            fieldBox.classList.add('field-box');
             data.fields.forEach(f => {
                 const el = document.createElement('p');
                 el.innerHTML = `<strong>${f.field_label}:</strong> ${f.field_value}`;
-                fieldBox.appendChild(el);
+                fieldContainer.appendChild(el);
             });
-            msgBox.appendChild(fieldBox);
         }
 
-// Сообщения и файлы из events
+        // Сообщения и вложения
         data.events.forEach(evt => {
             const div = document.createElement('div');
             div.className = 'msg ' + (evt.sender_role === 'support' ? 'support' : 'customer');
 
-            // Определение имени отправителя
             let senderLabel = 'Вы';
             if (evt.sender_role === 'support') {
                 senderLabel = evt.agent_name ? evt.agent_name : 'Техподдержка';
@@ -82,29 +82,30 @@ async function loadTicketPage() {
 
             if (evt.type === 'message') {
                 div.innerHTML = `
-            <strong>${senderLabel}:</strong><br>
-            ${evt.message}<br>
-            <small>${new Date(evt.created_date).toLocaleString()}</small>
-        `;
+                <strong>${senderLabel}:</strong><br>
+                ${evt.message}<br>
+                <small>${new Date(evt.created_date).toLocaleString()}</small>
+            `;
             } else if (evt.type === 'attachment') {
                 const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(evt.file_path);
                 div.innerHTML = `
-            <strong>${senderLabel}:</strong><br>
-            ${isImage
+                <strong>${senderLabel}:</strong><br>
+                ${isImage
                     ? `<img src="${evt.file_path}" style="max-width:300px;"><br>`
                     : `<a href="${evt.file_path}" target="_blank">${evt.file_name}</a><br>`}
-            <small>${new Date(evt.created_date).toLocaleString()}</small>
-        `;
+                <small>${new Date(evt.created_date).toLocaleString()}</small>
+            `;
             }
 
             msgBox.appendChild(div);
         });
 
-
-        // Кнопка закрытия тикета
-        if (data.ticket.status !== 'closed') {
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Закрыть тикет';
+        // Кнопка закрытия тикета (используем существующую кнопку)
+        const closeBtn = document.getElementById('close-ticket-btn');
+        if (data.ticket.status === 'closed') {
+            closeBtn.style.display = 'none';
+        } else {
+            closeBtn.style.display = 'block';
             closeBtn.onclick = async () => {
                 if (!confirm('Вы уверены, что хотите закрыть тикет?')) return;
                 const res = await fetch(`/api/support/tickets/${ticketId}/status`, {
@@ -116,11 +117,13 @@ async function loadTicketPage() {
                 if (result.success) {
                     alert('Тикет закрыт');
                     await loadTicket();
+                } else {
+                    alert('Ошибка закрытия тикета');
                 }
             };
-            document.querySelector('.container').appendChild(closeBtn);
         }
     }
+
 
 
     document.getElementById('message-form').addEventListener('submit', async (e) => {
@@ -163,45 +166,6 @@ async function loadTicketPage() {
     await loadTicket();
 }
 
-function showUser(name) {
-    const userInfoEl = document.getElementById('user-info');
-    if (!userInfoEl) return;
-
-    userInfoEl.innerHTML = `
-        <span id="user-name">${name}</span>
-        <button id="sign-out-btn">Sign out</button>
-        <button id="support-panel-btn" style="display: none;">Support Panel</button>
-        <button id="create-ticket-btn">Create Support Request</button>
-    `;
-
-    document.getElementById('sign-out-btn').addEventListener('click', () => {
-        document.cookie = 'user_name=; Max-Age=0';
-        document.cookie = 'user_email=; Max-Age=0';
-        location.reload();
-    });
-
-    document.getElementById('support-panel-btn').addEventListener('click', () => {
-        window.location.href = 'support-panel.html';
-    });
-
-    document.getElementById('create-ticket-btn').addEventListener('click', () => {
-        window.location.href = 'create-ticket.html';
-    });
-}
-
-async function checkSupportAgent(email) {
-    try {
-        const res = await fetch(`/api/is-support-agent?email=${encodeURIComponent(email)}`);
-        const data = await res.json();
-        if (data.isSupportAgent) {
-            const btn = document.getElementById('support-panel-btn');
-            if (btn) btn.style.display = 'inline-block';
-        }
-    } catch (err) {
-        console.error('Ошибка проверки роли поддержки:', err);
-    }
-}
-
 function initGoogleLogin() {
     google.accounts.id.initialize({
         client_id: '48635369674-hpohhuqf92pkd7b56oj10rrt1t25la5v.apps.googleusercontent.com',
@@ -212,18 +176,6 @@ function initGoogleLogin() {
         document.getElementById('g_id_signin'),
         { theme: 'outline', size: 'medium' }
     );
-}
-
-async function handleCredentialResponse(response) {
-    const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: response.credential })
-    });
-
-    const data = await res.json();
-    showUser(data.name);
-    checkSupportAgent(getCookie('user_email'));
 }
 
 async function loadContent() {
