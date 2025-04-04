@@ -103,7 +103,9 @@
 <footer class="footer"></footer>
 
 <script>
-    const userEmail = document.cookie.split('; ').find(c => c.startsWith('user_email')).split('=')[1];
+    const emailCookie = document.cookie.split('; ').find(c => c.startsWith('user_email='));
+    const userEmail = emailCookie ? decodeURIComponent(emailCookie.split('=')[1]) : null;
+
 
     async function loadTickets() {
         const status = document.getElementById('filter').value;
@@ -139,7 +141,11 @@
 
     document.getElementById('filter').addEventListener('change', loadTickets);
 
-    loadTickets();
+    if (userEmail) {
+        loadTickets();
+    } else {
+        document.getElementById('tickets').innerHTML = '<p>Please log in to view your tickets.</p>';
+    }
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="loadHeaderFooter.js"></script>

@@ -123,11 +123,11 @@ app.post('/api/auth/google', async (req, res) => {
 
         res.cookie('user_name', user.name, { httpOnly: false, sameSite: 'Lax' });
         res.cookie('user_email', user.email, { httpOnly: false, sameSite: 'Lax' });
-        res.cookie('user_avatar', picture, { httpOnly: false, sameSite: 'Lax' });
+        res.cookie('user_avatar', payload.picture, { httpOnly: false, sameSite: 'Lax' });
 
         res.json({
             name: user.name,
-            picture // ✅ добавляем в ответ!
+            picture
         });
 
     } catch (error) {

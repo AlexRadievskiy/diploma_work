@@ -313,3 +313,7 @@ main {
 .logout:hover {
     background-color: #b52b38;
 }
+
+.user-profile.hidden {
+    display: none !important;
+}

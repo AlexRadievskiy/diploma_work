@@ -1,12 +1,14 @@
-window.onload = async () => {
-    const username = getCookie('user_name');
-    const email = getCookie('user_email');
+// Получение cookie по имени
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+}
 
-    if (username) {
-        showUser(username);
-        checkSupportAgent(email);
-    } else {
-        initGoogleLogin();
+// Основной инициализатор
+document.addEventListener('DOMContentLoaded', async () => {
+    // ✅ Инициализируем хедер/футер первым
+    if (typeof initializeHeaderFooter === 'function') {
+        await initializeHeaderFooter();
     }
 
     loadContent();
@@ -14,8 +16,10 @@ window.onload = async () => {
     const createBtn = document.getElementById('create-ticket-btn');
     if (createBtn) {
         createBtn.addEventListener('click', () => {
+            const username = getCookie('user_name');
             if (!username) {
-                document.getElementById('g_id_signin').scrollIntoView({ behavior: 'smooth' });
+                const signin = document.getElementById('g_id_signin');
+                if (signin) signin.scrollIntoView({ behavior: 'smooth' });
                 alert('Пожалуйста, авторизуйтесь, чтобы создать тикет.');
                 return;
             }
@@ -27,7 +31,7 @@ window.onload = async () => {
     if (window.location.pathname.endsWith('ticket.html')) {
         await loadTicketPage();
     }
-};
+});
 
 async function loadTicketPage() {
     const params = new URLSearchParams(window.location.search);
@@ -59,7 +63,6 @@ async function loadTicketPage() {
         const msgBox = document.getElementById('messages');
         msgBox.innerHTML = '';
 
-        // Ticket Fields слева
         const fieldContainer = document.getElementById('ticket-fields');
         fieldContainer.innerHTML = '';
         if (data.fields && data.fields.length > 0) {
@@ -70,7 +73,6 @@ async function loadTicketPage() {
             });
         }
 
-        // Сообщения и вложения
         data.events.forEach(evt => {
             const div = document.createElement('div');
             div.className = 'msg ' + (evt.sender_role === 'support' ? 'support' : 'customer');
@@ -82,25 +84,24 @@ async function loadTicketPage() {
 
             if (evt.type === 'message') {
                 div.innerHTML = `
-                <strong>${senderLabel}:</strong><br>
-                ${evt.message}<br>
-                <small>${new Date(evt.created_date).toLocaleString()}</small>
-            `;
+                    <strong>${senderLabel}:</strong><br>
+                    ${evt.message}<br>
+                    <small>${new Date(evt.created_date).toLocaleString()}</small>
+                `;
             } else if (evt.type === 'attachment') {
                 const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(evt.file_path);
                 div.innerHTML = `
-                <strong>${senderLabel}:</strong><br>
-                ${isImage
+                    <strong>${senderLabel}:</strong><br>
+                    ${isImage
                     ? `<img src="${evt.file_path}" style="max-width:300px;"><br>`
                     : `<a href="${evt.file_path}" target="_blank">${evt.file_name}</a><br>`}
-                <small>${new Date(evt.created_date).toLocaleString()}</small>
-            `;
+                    <small>${new Date(evt.created_date).toLocaleString()}</small>
+                `;
             }
 
             msgBox.appendChild(div);
         });
 
-        // Кнопка закрытия тикета (используем существующую кнопку)
         const closeBtn = document.getElementById('close-ticket-btn');
         if (data.ticket.status === 'closed') {
             closeBtn.style.display = 'none';
@@ -124,12 +125,9 @@ async function loadTicketPage() {
         }
     }
 
-
-
     document.getElementById('message-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Блокируем отправку, если тикет уже закрыт
         const statusText = document.getElementById('ticket-status').textContent;
         if (statusText === 'closed') {
             alert('Тикет закрыт. Нельзя отправить сообщение.');
@@ -162,20 +160,7 @@ async function loadTicketPage() {
         }
     });
 
-
     await loadTicket();
-}
-
-function initGoogleLogin() {
-    google.accounts.id.initialize({
-        client_id: '48635369674-hpohhuqf92pkd7b56oj10rrt1t25la5v.apps.googleusercontent.com',
-        callback: handleCredentialResponse
-    });
-
-    google.accounts.id.renderButton(
-        document.getElementById('g_id_signin'),
-        { theme: 'outline', size: 'medium' }
-    );
 }
 
 async function loadContent() {
@@ -184,6 +169,7 @@ async function loadContent() {
 
     const container = document.getElementById('content');
     const searchResults = document.getElementById('searchResults');
+    if (!container) return;
 
     data.forEach(cat => {
         const div = document.createElement('div');
@@ -192,14 +178,15 @@ async function loadContent() {
             <h2>${cat.name}</h2>
             <p>${cat.description || ''}</p>
             <ul class="article-list">
-                 ${cat.articles.map(a => `<li><a href="article.html?id=${a.id}">${a.title}</a></li>`).join('')}
+                ${cat.articles.map(a => `<li><a href="article.html?id=${a.id}">${a.title}</a></li>`).join('')}
             </ul>
-
         `;
         container.appendChild(div);
     });
 
     const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+
     searchInput.addEventListener('input', async (e) => {
         const query = e.target.value.toLowerCase().trim();
         searchResults.innerHTML = '';
@@ -220,9 +207,4 @@ async function loadContent() {
             searchResults.style.display = 'block';
         }
     });
-}
-
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : null;
 }
