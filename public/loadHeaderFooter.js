@@ -1,42 +1,37 @@
-// Получение cookie по имени
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : null;
 }
 
-// Установка cookie
 function setCookie(name, value) {
     document.cookie = `${name}=${encodeURIComponent(value)}; path=/`;
 }
 
-// Удаление cookie
 function clearCookies() {
     ['user_name', 'user_email', 'user_avatar'].forEach(n => {
         document.cookie = `${n}=; Max-Age=0; path=/`;
     });
 }
 
-// Загрузка шаблонов header и footer
 async function loadTemplate(path, selector) {
-    console.log(`[📦 Загрузка шаблона] ${path}`);
+    console.log(`[📦 Загружаю шаблон: ${path} → ${selector}]`);
     const response = await fetch(path);
     const html = await response.text();
     document.querySelector(selector).innerHTML = html;
-    console.log(`[✅ ${selector} загружен]`);
+    console.log(`[✅ Вставлен шаблон в ${selector}]`);
 }
 
-// Показываем пользователя
-function showUser(name, avatarUrl = null) {
-    console.log("[👤 showUser]", { name, avatarUrl });
-
+function showUser(name, avatarUrl) {
     const nameEl = document.getElementById('user-name');
     const avatarEl = document.getElementById('user-avatar');
     const profileBlock = document.getElementById('user-profile');
     const authBlock = document.getElementById('authenticated-actions');
     const signin = document.getElementById('g_id_signin');
 
-    if (nameEl) nameEl.textContent = name || '';
+    const signOutBtn = document.getElementById('sign-out-btn');
+    const myTicketsBtn = document.getElementById('my-tickets-btn');
 
+    if (nameEl) nameEl.textContent = name || '';
     if (avatarEl) {
         if (avatarUrl && avatarUrl.startsWith('http')) {
             avatarEl.src = avatarUrl;
@@ -50,26 +45,43 @@ function showUser(name, avatarUrl = null) {
     if (profileBlock) profileBlock.classList.toggle('hidden', !name);
     if (authBlock) authBlock.classList.toggle('hidden', !name);
     if (signin) signin.style.display = name ? 'none' : 'block';
+
+    if (signOutBtn) signOutBtn.style.display = name ? 'inline-block' : 'none';
+    if (myTicketsBtn) myTicketsBtn.classList.toggle('hidden', !name);
 }
 
-// Проверка роли сотрудника
 async function checkSupportAgent(email) {
-    console.log("[🔒 checkSupportAgent]", email);
-    try {
-        const res = await fetch(`/api/is-support-agent?email=${encodeURIComponent(email)}`);
-        const data = await res.json();
-        if (data.isSupportAgent) {
-            const btn = document.getElementById('support-panel-btn');
-            if (btn) btn.classList.remove('hidden');
-        }
-    } catch (err) {
-        console.error("[❌ Ошибка проверки роли]", err);
+    const res = await fetch(`/api/is-support-agent?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+
+    const panelBtn = document.getElementById('support-panel-btn');
+    const manageBtn = document.getElementById('manage-roles-btn');
+    const manageArticlesBtn = document.getElementById('manage-articles-btn');
+    const analyticsBtn = document.getElementById('analytics-btn');
+    const adminDropdown = document.getElementById('admin-dropdown');
+
+    if (data && ['junior', 'senior', 'admin'].includes(data.access_level)) {
+        if (adminDropdown) adminDropdown.classList.remove('hidden');
+    }
+
+    if (panelBtn && ['junior', 'senior', 'admin'].includes(data.access_level)) {
+        panelBtn.classList.remove('hidden');
+    }
+
+    if (manageBtn && ['senior', 'admin'].includes(data.access_level)) {
+        manageBtn.classList.remove('hidden');
+    }
+
+    if (manageArticlesBtn && ['senior', 'admin'].includes(data.access_level)) {
+        manageArticlesBtn.classList.remove('hidden');
+    }
+
+    if (analyticsBtn && ['senior', 'admin'].includes(data.access_level)) {
+        analyticsBtn.classList.remove('hidden');
     }
 }
 
-// Вход через Google
 function initGoogleLogin() {
-    console.log("[🔐 initGoogleLogin]");
     google.accounts.id.initialize({
         client_id: '48635369674-hpohhuqf92pkd7b56oj10rrt1t25la5v.apps.googleusercontent.com',
         callback: handleCredentialResponse
@@ -81,9 +93,8 @@ function initGoogleLogin() {
     );
 }
 
-// Обработка Google токена
 async function handleCredentialResponse(response) {
-    console.log("[🔥 handleCredentialResponse вызван]", response);
+    console.log('[🔥 handleCredentialResponse вызван]', response);
 
     const res = await fetch('/api/auth/google', {
         method: 'POST',
@@ -92,33 +103,43 @@ async function handleCredentialResponse(response) {
     });
 
     const data = await res.json();
-    console.log("[✅ Ответ от backend]", data);
+    console.log('[✅ Ответ от backend]', data);
 
     if (data.name && data.email) {
+        console.log('[✅ Условия прошли, записываю куки и перезапускаю интерфейс]');
         setCookie('user_name', data.name);
         setCookie('user_email', data.email);
-        if (data.picture) setCookie('user_avatar', data.picture);
+        if (data.picture) {
+            setCookie('user_avatar', data.picture);
+        }
 
-        console.log("[🔁 setTimeout для reload]");
+        console.log('[🔁 Перезапуск initializeHeaderFooter]');
+        await initializeHeaderFooter();
+
+        const loader = document.getElementById('auth-loader');
+        if (loader) loader.classList.remove('hidden');
+
         setTimeout(() => {
-            location.reload();
-        }, 100);
+            location.href = '/';
+        }, 1500);
+    } else {
+        console.warn('[⚠️ Условия не прошли: data.name или data.email отсутствует]');
     }
 }
 
-
-
-
-// Выход
 function signOut() {
     clearCookies();
+    const signin = document.getElementById("g_id_signin");
+    const profileBlock = document.getElementById("authenticated-actions");
+
+    if (profileBlock) profileBlock.classList.add("hidden");
+    if (signin) signin.classList.remove("hidden");
+    initGoogleLogin(); // обязательно перерисовать кнопку
     location.reload();
 }
 
-// Основная инициализация
 async function initializeHeaderFooter() {
-    console.log("[➡️ initializeHeaderFooter старт]");
-
+    console.log('[➡️ initializeHeaderFooter старт]');
     await loadTemplate('/templates/header.html', 'header');
     await loadTemplate('/templates/footer.html', 'footer');
 
@@ -126,13 +147,19 @@ async function initializeHeaderFooter() {
     const email = getCookie('user_email');
     const avatar = getCookie('user_avatar');
 
-    console.log("[🔍 cookies]", { name, email, avatar });
+    const signOutBtn = document.getElementById('sign-out-btn');
+    const myTicketsBtn = document.getElementById('my-tickets-btn');
+
+    if (signOutBtn) signOutBtn.style.display = 'none';
+    if (myTicketsBtn) myTicketsBtn.classList.add('hidden');
+
+    console.log('[🔍 cookies]', { name, email, avatar });
 
     if (name && email) {
         showUser(name, avatar);
-        checkSupportAgent(email);
+        await checkSupportAgent(email);
     } else {
-        console.log("[🔐 Нет авторизации, запускаю Google вход]");
+        console.log('[🔐 Нет авторизации, запускаю Google вход]');
         initGoogleLogin();
     }
 
@@ -142,5 +169,31 @@ async function initializeHeaderFooter() {
         }
     });
 }
+
+window.addEventListener('message', async (event) => {
+    if (event.data?.type === 'googleLogin') {
+        console.log('[📩 Получен credential через postMessage]', event.data);
+
+        const res = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential: event.data.credential })
+        });
+
+        const data = await res.json();
+        console.log('[✅ Ответ от backend]', data);
+
+        if (data.name && data.email) {
+            setCookie('user_name', data.name);
+            setCookie('user_email', data.email);
+            if (data.picture) setCookie('user_avatar', data.picture);
+
+            const loader = document.getElementById('auth-loader');
+            if (loader) loader.classList.remove('hidden');
+
+            setTimeout(() => location.reload(), 1500);
+        }
+    }
+});
 
 document.addEventListener('DOMContentLoaded', initializeHeaderFooter);

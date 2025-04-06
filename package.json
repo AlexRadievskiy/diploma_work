@@ -128,5 +128,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlexRadievskiy/diploma_work.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AlexRadievskiy/diploma_work/issues"
+  },
+  "homepage": "https://github.com/AlexRadievskiy/diploma_work#readme",
   "description": ""
 }

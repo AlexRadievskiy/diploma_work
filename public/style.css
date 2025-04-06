@@ -1,3 +1,9 @@
+/* ✅ Глобальный класс для скрытия */
+.hidden {
+    display: none !important;
+}
+
+/* 🧩 Остальная часть твоего файла */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
@@ -130,7 +136,9 @@ main {
     gap: 10px;
 }
 
-#create-ticket-btn, #support-panel-btn, #sign-out-btn {
+#create-ticket-btn,
+#support-panel-btn,
+#sign-out-btn {
     background-color: #007bff;
     color: #fff;
     padding: 8px 16px;
@@ -140,17 +148,10 @@ main {
     transition: background-color 0.3s;
 }
 
-#create-ticket-btn:hover, #support-panel-btn:hover, #sign-out-btn:hover {
+#create-ticket-btn:hover,
+#support-panel-btn:hover,
+#sign-out-btn:hover {
     background-color: #0056b3;
-}
-
-#support-panel-btn.hidden {
-    display: none;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
 }
 
 .btn {
@@ -228,6 +229,7 @@ main {
     margin: 5px 0;
     font-size: 0.9em;
 }
+
 .header {
     background-color: #343a40;
     color: #fff;
@@ -262,10 +264,30 @@ main {
     gap: 20px;
 }
 
+.user-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .user-profile {
     display: flex;
     align-items: center;
     gap: 10px;
+    background-color: #2b2f33;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+
+.user-profile .user-name {
+    color: #fff;
+    font-weight: 500;
+    margin-right: 8px;
+}
+
+.user-profile .logout {
+    padding: 6px 10px;
+    font-size: 14px;
 }
 
 .user-avatar {
@@ -276,44 +298,106 @@ main {
     border: 2px solid #fff;
 }
 
-.user-name {
-    font-weight: 500;
-    font-size: 15px;
-    color: #fff;
-}
-
 .nav-buttons {
     display: flex;
     gap: 10px;
 }
 
-.btn {
-    background-color: #007bff;
-    color: #fff;
-    padding: 8px 14px;
-    border: none;
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn:hover {
-    background-color: #0056b3;
-}
-
-.logout {
-    background-color: #dc3545;
-}
-
-.logout:hover {
-    background-color: #b52b38;
-}
-
 .user-profile.hidden {
     display: none !important;
+}
+
+.global-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.global-loader.hidden {
+    display: none;
+}
+
+.loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.loader-text {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #ccc;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    position: relative;
+    z-index: 2;
+}
+
+.dropdown-toggle::after {
+    content: " ▼";
+    font-size: 0.7em;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%; /* прямо под кнопкой */
+    left: 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    border-radius: 6px;
+    min-width: 180px;
+    display: none;
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+    padding: 10px 16px;
+    color: #333;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #f5f5f5;
 }

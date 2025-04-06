@@ -203,12 +203,37 @@
     document.getElementById('ticket-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const formData = new FormData(document.getElementById('ticket-form'));
-        formData.append('email', userEmail);
+        const email = getCookie('user_email');
+        const title = document.getElementById('title').value;
+        const category_id = document.getElementById('category').value;
+        const description = document.getElementById('description').value;
 
-        const res = await fetch('/api/tickets', {
+        const fields = [];
+        const inputs = document.querySelectorAll('#dynamic-fields [name]');
+        inputs.forEach(input => {
+            const match = input.name.match(/^field_(\d+)$/);
+            if (match) {
+                fields.push({
+                    id: parseInt(match[1]),
+                    value: input.value
+                });
+            }
+        });
+
+        const payload = {
+            email,
+            title,
+            category_id,
+            description,
+            fields
+        };
+
+        const res = await fetch('/api/tickets/create', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
         });
 
         const result = await res.json();
@@ -217,9 +242,10 @@
             document.getElementById('success-message').style.display = 'block';
             document.getElementById('ticket-form').reset();
         } else {
-            alert('Ошибка создания тикета: ' + result.message);
+            alert('Ошибка создания тикета: ' + (result.error || 'Unknown error'));
         }
     });
+
 
     loadCategories();
 </script>

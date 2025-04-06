@@ -2,19 +2,55 @@
     <div class="container header-content">
         <h1 class="logo" onclick="location.href='/'" style="cursor:pointer;">Help Centre</h1>
         <div id="user-info" class="user-area">
-            <div id="g_id_signin"></div>
-            <div id="authenticated-actions" class="hidden auth-block">
-                <div class="user-profile hidden" id="user-profile">
-                    <img id="user-avatar" src="" class="user-avatar hidden" />
-                    <span id="user-name"></span>
+            <div class="nav-buttons">
+                <button id="create-ticket-btn" class="btn">
+                    <i class="fas fa-plus-circle"></i> Create
+                </button>
+
+                <a id="my-tickets-btn" href="/my-tickets.html" class="btn hidden">
+                    <i class="fas fa-list"></i> My Tickets
+                </a>
+
+                <!-- ▼ Admin Dropdown -->
+                <div id="admin-dropdown" class="dropdown hidden">
+                    <button class="btn dropdown-toggle">
+                        <i class="fas fa-user-cog"></i> Admin Panel
+                    </button>
+                    <div class="dropdown-menu">
+                        <a id="support-panel-btn" href="/support-panel.html" class="dropdown-item hidden">
+                            <i class="fas fa-tools"></i> Tickets
+                        </a>
+                        <a id="manage-roles-btn" href="/manage-roles.html" class="dropdown-item hidden">
+                            <i class="fas fa-user-shield"></i> Manage Roles
+                        </a>
+                        <a id="manage-articles-btn" href="/manage-articles.html" class="dropdown-item hidden">
+                            <i class="fas fa-pen-nib"></i> Articles
+                        </a>
+                        <a id="analytics-btn" href="/analytics.html" class="dropdown-item hidden">
+                            <i class="fas fa-chart-line"></i> Analytics
+                        </a>
+                    </div>
                 </div>
-                <div class="nav-buttons">
-                    <a id="my-tickets-btn" href="/my-tickets.html" class="btn"><i class="fas fa-list"></i> My Tickets</a>
-                    <button id="create-ticket-btn" class="btn"><i class="fas fa-plus-circle"></i> Create</button>
-                    <a id="support-panel-btn" href="/support-panel.html" class="btn hidden"><i class="fas fa-tools"></i> Panel</a>
-                    <button id="sign-out-btn" class="btn logout"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+
+            <div id="g_id_signin"></div>
+
+            <div id="authenticated-actions" class="hidden user-block">
+                <div id="user-profile" class="user-profile">
+                    <img id="user-avatar" src="" class="user-avatar hidden" />
+                    <span id="user-name" class="user-name"></span>
+                    <button id="sign-out-btn" class="btn logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 </header>
+
+<div id="auth-loader" class="global-loader hidden">
+    <div class="loader-content">
+        <div class="loader-text">Authorisation...</div>
+        <div class="spinner"></div>
+    </div>
+</div>

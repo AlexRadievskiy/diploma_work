@@ -127,6 +127,7 @@ app.post('/api/auth/google', async (req, res) => {
 
         res.json({
             name: user.name,
+            email: user.email,
             picture
         });
 
@@ -297,7 +298,6 @@ app.get('/api/tickets/:id', async (req, res) => {
     }
 });
 
-
 app.post('/api/tickets/:id/reply', upload.single('file'), async (req, res) => {
     const ticketId = req.params.id;
     const { email, message } = req.body;
@@ -318,13 +318,24 @@ app.post('/api/tickets/:id/reply', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'Cannot reply to a closed ticket' });
         }
 
-        const [result] = await pool.query(`
-            INSERT INTO ticket_messages (ticket_id, sender_role, message)
-            VALUES (?, 'customer', ?)`, [ticketId, message || '']);
+        let messageId = null;
 
-        const messageId = result.insertId;
+        if (message && message.trim()) {
+            const [result] = await pool.query(`
+                INSERT INTO ticket_messages (ticket_id, sender_role, message)
+                VALUES (?, 'customer', ?)`, [ticketId, message.trim()]);
+            messageId = result.insertId;
+        }
 
         if (file) {
+            // если нет сообщения — создаём "пустое" системное сообщение для вложения
+            if (!messageId) {
+                const [msgRes] = await pool.query(`
+                    INSERT INTO ticket_messages (ticket_id, sender_role, message)
+                    VALUES (?, 'customer', '')`, [ticketId]);
+                messageId = msgRes.insertId;
+            }
+
             await pool.query(`
                 INSERT INTO ticket_message_attachments (message_id, file_path, file_name)
                 VALUES (?, ?, ?)
@@ -341,7 +352,6 @@ app.post('/api/tickets/:id/reply', upload.single('file'), async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
-
 
 app.post('/api/tickets/:id/close', async (req, res) => {
     const ticketId = req.params.id;
@@ -390,7 +400,7 @@ app.get('/api/is-support-agent', async (req, res) => {
 
 // ... список тикетов для саппортов
 app.get('/api/support/tickets', async (req, res) => {
-    const { email, status } = req.query;
+    const { email, status, user } = req.query;
 
     if (!email) return res.status(400).json({ error: 'Missing email' });
 
@@ -416,12 +426,19 @@ app.get('/api/support/tickets', async (req, res) => {
                 (SELECT created_date FROM ticket_messages WHERE ticket_id = t.id ORDER BY created_date DESC LIMIT 1) as last_message_date
             FROM tickets t
             JOIN users u ON t.user_id = u.id
+            WHERE 1
         `;
+
         const params = [];
 
         if (status) {
-            query += ` WHERE t.status = ?`;
+            query += ` AND t.status = ?`;
             params.push(status);
+        }
+
+        if (user) {
+            query += ` AND u.email LIKE ?`;
+            params.push(`%${user}%`);
         }
 
         query += ` ORDER BY t.update_date DESC`;
@@ -433,6 +450,7 @@ app.get('/api/support/tickets', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 // ... ответ от саппорта
 app.post('/api/support/tickets/:id/reply', upload.single('file'), async (req, res) => {
@@ -677,6 +695,233 @@ app.post('/api/support/tickets/:id/upload', upload.single('attachment'), async (
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+app.post('/api/support/set-role', async (req, res) => {
+    const { requesterEmail, targetEmail, newRole } = req.body;
+
+    try {
+        // Получаем access_level инициатора
+        const [requesterRows] = await pool.query(`
+            SELECT s.access_level
+            FROM support_staff s
+            JOIN users u ON s.user_id = u.id
+            WHERE u.email = ?
+        `, [requesterEmail]);
+
+        const requester = requesterRows[0];
+        if (!requester) return res.status(403).send('Access denied');
+
+        const requesterRole = requester.access_level;
+
+        // Защита: только senior и admin могут менять роли
+        if (!['senior', 'admin'].includes(requesterRole)) {
+            return res.status(403).send('Only senior or admin can assign roles');
+        }
+
+        const validRoles = ['junior', 'senior', 'admin', 'fired'];
+        if (!validRoles.includes(newRole)) return res.status(400).send('Invalid role');
+
+        // Защита: senior не может назначать senior или admin
+        if (requesterRole === 'senior' && ['senior', 'admin'].includes(newRole)) {
+            return res.status(403).send('Seniors can only assign junior or fired');
+        }
+
+        // Обновляем ранг целевого пользователя через email
+        const [result] = await pool.query(`
+            UPDATE support_staff s
+            JOIN users u ON s.user_id = u.id
+            SET s.access_level = ?
+            WHERE u.email = ?
+        `, [newRole, targetEmail]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).send('Target user not found or not support staff');
+        }
+
+        res.send(`Role updated to ${newRole}`);
+    } catch (err) {
+        console.error('[❌ Ошибка при установке роли]', err);
+        res.status(500).send('Server error');
+    }
+});
+
+// 📥 Получение всех категорий (не скрытых)
+app.get('/api/knowledge/categories', async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT id, name, description, priority, is_hidden FROM knowledge_base_categories ORDER BY priority DESC'
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Ошибка при загрузке категорий:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+// 🟢 Создание категории
+app.post('/api/knowledge/category', async (req, res) => {
+    const { name, description, priority, is_hidden } = req.body;
+
+    if (!name) return res.status(400).send('Category name is required');
+
+    try {
+        await pool.query(
+            'INSERT INTO knowledge_base_categories (name, description, priority, is_hidden) VALUES (?, ?, ?, ?)',
+            [name, description || null, priority || 0, is_hidden || 0]
+        );
+        res.send('Category created successfully');
+    } catch (err) {
+        console.error('Ошибка при создании категории:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+// 🟡 Редактирование категории
+app.put('/api/knowledge/category/:id', async (req, res) => {
+    const id = req.params.id;
+    const { name, description, priority, is_hidden } = req.body;
+
+    try {
+        await pool.query(
+            'UPDATE knowledge_base_categories SET name = ?, description = ?, priority = ?, is_hidden = ? WHERE id = ?',
+            [name, description || null, priority || 0, is_hidden || 0, id]
+        );
+        res.send('Category updated');
+    } catch (err) {
+        console.error('Ошибка при обновлении категории:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+// 🔴 Удаление категории
+app.delete('/api/knowledge/category/:id', async (req, res) => {
+    const id = req.params.id;
+
+    try {
+        await pool.query('DELETE FROM knowledge_base_categories WHERE id = ?', [id]);
+        res.send('Category deleted');
+    } catch (err) {
+        console.error('Ошибка при удалении категории:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+// 🟢 Создание статьи
+app.post('/api/knowledge/article', async (req, res) => {
+    const { title, category_id, priority, text, is_hidden } = req.body;
+
+    if (!title || !category_id || !text) {
+        return res.status(400).send('Missing required fields');
+    }
+
+    try {
+        await pool.query(
+            'INSERT INTO knowledge_base_articles (title, text, category_id, priority, is_hidden) VALUES (?, ?, ?, ?, ?)',
+            [title, text, category_id, priority || 0, is_hidden || 0]
+        );
+        res.send('Article saved successfully');
+    } catch (err) {
+        console.error('Ошибка при создании статьи:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+// 🟡 Редактирование статьи
+app.put('/api/knowledge/article/:id', async (req, res) => {
+    const id = req.params.id;
+    const { title, category_id, priority, text, is_hidden } = req.body;
+
+    try {
+        await pool.query(
+            'UPDATE knowledge_base_articles SET title = ?, text = ?, category_id = ?, priority = ?, is_hidden = ? WHERE id = ?',
+            [title, text, category_id, priority || 0, is_hidden || 0, id]
+        );
+        res.send('Article updated');
+    } catch (err) {
+        console.error('Ошибка при обновлении статьи:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+// 🔴 Удаление статьи
+app.delete('/api/knowledge/article/:id', async (req, res) => {
+    const id = req.params.id;
+
+    try {
+        await pool.query('DELETE FROM knowledge_base_articles WHERE id = ?', [id]);
+        res.send('Article deleted');
+    } catch (err) {
+        console.error('Ошибка при удалении статьи:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+app.get('/api/knowledge/articles', async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT id, title, category_id, priority, is_hidden FROM knowledge_base_articles ORDER BY priority DESC'
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Ошибка при загрузке статей:', err);
+        res.status(500).send('Server error');
+    }
+});
+
+app.get('/api/analytics/overview', async (req, res) => {
+    try {
+        const { from, to } = req.query;
+        let dateFilter = '';
+        const params = [];
+
+        if (from && to) {
+            dateFilter = 'WHERE creation_date BETWEEN ? AND ?';
+            params.push(from, to);
+        }
+
+        const [[{ count: totalTickets }]] = await pool.query(
+            `SELECT COUNT(*) as count FROM tickets ${dateFilter}`,
+            params
+        );
+
+        const [statusBreakdown] = await pool.query(
+            `SELECT t.status, COUNT(*) as count FROM tickets t ${dateFilter} GROUP BY t.status`,
+            params
+        );
+
+        const [priorityBreakdown] = await pool.query(
+            `SELECT t.priority, COUNT(*) as count FROM tickets t ${dateFilter} GROUP BY t.priority`,
+            params
+        );
+
+        const [agentLoad] = await pool.query(
+            `SELECT s.agent_name AS name, COUNT(*) as count
+       FROM support_staff s
+       JOIN ticket_messages tm ON tm.support_staff_id = s.id
+       JOIN tickets t ON t.id = tm.ticket_id
+       ${dateFilter}
+       GROUP BY s.id
+       ORDER BY count DESC`,
+            params
+        );
+
+        const [categoryUsage] = await pool.query(
+            `SELECT c.name, COUNT(*) as count
+       FROM ticket_categories c
+       JOIN tickets t ON t.category_id = c.id
+       ${dateFilter}
+       GROUP BY c.id`,
+            params
+        );
+
+        res.json({ totalTickets, statusBreakdown, priorityBreakdown, agentLoad, categoryUsage });
+    } catch (e) {
+        console.error('❌ Ошибка в /api/analytics/overview:', e);
+        res.status(500).json({ error: 'Analytics failed', details: e.message });
+    }
+});
+
+
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
