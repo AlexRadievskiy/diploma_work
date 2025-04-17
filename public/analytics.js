@@ -108,7 +108,7 @@ async function loadAnalytics() {
             buildChart('categoryChart', 'bar', data.categoryUsage.map(c => c.name), data.categoryUsage.map(c => c.count), 'Tickets by Category');
         })
         .catch(err => {
-            console.error('[❌ Ошибка получения аналитики]', err);
+            console.error('[❌]', err);
         });
 }
 

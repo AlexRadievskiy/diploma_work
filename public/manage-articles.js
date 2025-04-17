@@ -73,7 +73,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadCategories();
     });
 
-    // Cancel edit buttons
     document.getElementById('cancel-article-edit').addEventListener('click', () => {
         editingArticleId = null;
         resetArticleForm();

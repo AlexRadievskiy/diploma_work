@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const accessLevel = data.access_level;
 
     if (accessLevel === 'senior') {
-        // 🔒 Отключаем senior и admin
         [...roleSelect.options].forEach(opt => {
             if (['senior', 'admin'].includes(opt.value)) {
                 opt.disabled = true;

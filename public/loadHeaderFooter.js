@@ -14,11 +14,11 @@ function clearCookies() {
 }
 
 async function loadTemplate(path, selector) {
-    console.log(`[📦 Загружаю шаблон: ${path} → ${selector}]`);
+    console.log(`[📦 ${path} → ${selector}]`);
     const response = await fetch(path);
     const html = await response.text();
     document.querySelector(selector).innerHTML = html;
-    console.log(`[✅ Вставлен шаблон в ${selector}]`);
+    console.log(`[✅ ${selector}]`);
 }
 
 function showUser(name, avatarUrl) {
@@ -94,7 +94,7 @@ function initGoogleLogin() {
 }
 
 async function handleCredentialResponse(response) {
-    console.log('[🔥 handleCredentialResponse вызван]', response);
+    console.log('[🔥 handleCredentialResponse]', response);
 
     const res = await fetch('/api/auth/google', {
         method: 'POST',
@@ -103,17 +103,17 @@ async function handleCredentialResponse(response) {
     });
 
     const data = await res.json();
-    console.log('[✅ Ответ от backend]', data);
+    console.log('[✅ backend]', data);
 
     if (data.name && data.email) {
-        console.log('[✅ Условия прошли, записываю куки и перезапускаю интерфейс]');
+        console.log('[✅]');
         setCookie('user_name', data.name);
         setCookie('user_email', data.email);
         if (data.picture) {
             setCookie('user_avatar', data.picture);
         }
 
-        console.log('[🔁 Перезапуск initializeHeaderFooter]');
+        console.log('[🔁 initializeHeaderFooter restart]');
         await initializeHeaderFooter();
 
         const loader = document.getElementById('auth-loader');
@@ -123,7 +123,7 @@ async function handleCredentialResponse(response) {
             location.href = '/';
         }, 1500);
     } else {
-        console.warn('[⚠️ Условия не прошли: data.name или data.email отсутствует]');
+        console.warn('[⚠️]');
     }
 }
 
@@ -159,7 +159,7 @@ async function initializeHeaderFooter() {
         showUser(name, avatar);
         await checkSupportAgent(email);
     } else {
-        console.log('[🔐 Нет авторизации, запускаю Google вход]');
+        console.log('[🔐 No auth, start Google auth]');
         initGoogleLogin();
     }
 
@@ -172,7 +172,7 @@ async function initializeHeaderFooter() {
 
 window.addEventListener('message', async (event) => {
     if (event.data?.type === 'googleLogin') {
-        console.log('[📩 Получен credential через postMessage]', event.data);
+        console.log('[📩 Get credential from postMessage]', event.data);
 
         const res = await fetch('/api/auth/google', {
             method: 'POST',
@@ -181,7 +181,7 @@ window.addEventListener('message', async (event) => {
         });
 
         const data = await res.json();
-        console.log('[✅ Ответ от backend]', data);
+        console.log('[✅ backend]', data);
 
         if (data.name && data.email) {
             setCookie('user_name', data.name);

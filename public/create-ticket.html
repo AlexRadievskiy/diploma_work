@@ -242,7 +242,7 @@
             document.getElementById('success-message').style.display = 'block';
             document.getElementById('ticket-form').reset();
         } else {
-            alert('Ошибка создания тикета: ' + (result.error || 'Unknown error'));
+            alert('Ticket creation error: ' + (result.error || 'Unknown error'));
         }
     });
 

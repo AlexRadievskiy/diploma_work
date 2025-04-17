@@ -1,10 +1,9 @@
-// Получение cookie по имени
+
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : null;
 }
 
-// Основной инициализатор
 document.addEventListener('DOMContentLoaded', async () => {
     if (typeof initializeHeaderFooter === 'function') {
         await initializeHeaderFooter();
@@ -19,14 +18,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!username) {
                 const signin = document.getElementById('g_id_signin');
                 if (signin) signin.scrollIntoView({ behavior: 'smooth' });
-                alert('Пожалуйста, авторизуйтесь, чтобы создать тикет.');
+                alert('Pls. Sign-in to create ticket');
                 return;
             }
             window.location.href = 'create-ticket.html';
         });
     }
 
-    // ❌ Логика тикета теперь в ticket.js, больше ничего здесь не нужно
 });
 
 async function loadContent() {

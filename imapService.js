@@ -70,7 +70,7 @@ async function startListeningForEmails() {
       VALUES (?, 'customer', ?)
     `, [ticketId, body]);
 
-        console.log(`✅ Новое сообщение в тикет #${ticketId} от ${userEmail}`);
+        console.log(`✅ New message in ticket #${ticketId} from ${userEmail}`);
     });
 }
 

@@ -1,9 +1,8 @@
-/* ✅ Глобальный класс для скрытия */
+
 .hidden {
     display: none !important;
 }
 
-/* 🧩 Остальная часть твоего файла */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
