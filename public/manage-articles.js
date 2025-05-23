@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await fetch(`/api/is-support-agent?email=${encodeURIComponent(email)}`);
     const data = await res.json();
     if (!data || !['admin', 'senior'].includes(data.access_level)) {
-        alert('Access denied');
+        alert('Доступ заборонено');
         location.href = '/';
         return;
     }
@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadCategories();
     await loadArticles();
 
-    // Submit article
     document.getElementById('article-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
@@ -44,7 +43,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadArticles();
     });
 
-    // Submit category
     document.getElementById('category-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
@@ -87,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function resetArticleForm() {
     const form = document.getElementById('article-form');
     form.reset();
-    document.getElementById('article-form-title').textContent = '➕ Create Article';
+    document.getElementById('article-form-title').textContent = '➕ Створити Статтю';
     document.getElementById('cancel-article-edit').style.display = 'none';
     form.closest('.editor-block').style.border = '';
     document.getElementById('title').focus();
@@ -96,7 +94,7 @@ function resetArticleForm() {
 function resetCategoryForm() {
     const form = document.getElementById('category-form');
     form.reset();
-    document.getElementById('category-form-title').textContent = '➕ Create Category';
+    document.getElementById('category-form-title').textContent = '➕ Створити Категорію';
     document.getElementById('cancel-category-edit').style.display = 'none';
     form.closest('.editor-block').style.border = '';
     document.getElementById('category-name').focus();
@@ -119,7 +117,7 @@ async function loadCategories() {
 
         const li = document.createElement('li');
         li.innerHTML = `
-      <strong>${cat.name}</strong> (priority ${cat.priority})
+      <strong>${cat.name}</strong> (пріоритет ${cat.priority})
       <div>
         <button onclick="editCategory(${cat.id}, \`${cat.name}\`, \`${cat.description || ''}\`, ${cat.priority}, ${cat.is_hidden})">✏️</button>
         <button onclick="deleteCategory(${cat.id})">🗑️</button>
@@ -138,7 +136,7 @@ async function loadArticles() {
     data.forEach(article => {
         const li = document.createElement('li');
         li.innerHTML = `
-      <strong>${article.title}</strong> (priority ${article.priority})
+      <strong>${article.title}</strong> (пріоритет ${article.priority})
       <div>
         <button onclick="editArticle(${article.id})">✏️</button>
         <button onclick="deleteArticle(${article.id})">🗑️</button>
@@ -155,7 +153,7 @@ async function editArticle(id) {
     if (!article) return;
 
     editingArticleId = id;
-    document.getElementById('article-form-title').textContent = `✏️ Edit Article #${id}`;
+    document.getElementById('article-form-title').textContent = `✏️ Редагувати Статтю #${id}`;
     document.getElementById('cancel-article-edit').style.display = 'inline-block';
     document.getElementById('title').value = article.title;
     document.getElementById('category').value = article.category_id;
@@ -168,7 +166,7 @@ async function editArticle(id) {
 
 function editCategory(id, name, desc, priority, is_hidden) {
     editingCategoryId = id;
-    document.getElementById('category-form-title').textContent = `✏️ Edit Category #${id}`;
+    document.getElementById('category-form-title').textContent = `✏️ Редагувати Категорію #${id}`;
     document.getElementById('cancel-category-edit').style.display = 'inline-block';
     document.getElementById('category-name').value = name;
     document.getElementById('category-description').value = desc || '';
@@ -179,13 +177,13 @@ function editCategory(id, name, desc, priority, is_hidden) {
 }
 
 async function deleteCategory(id) {
-    if (!confirm('Delete this category?')) return;
+    if (!confirm('Видалити цю категорію?')) return;
     await fetch(`/api/knowledge/category/${id}`, { method: 'DELETE' });
     await loadCategories();
 }
 
 async function deleteArticle(id) {
-    if (!confirm('Delete this article?')) return;
+    if (!confirm('Видалити цю статтю?')) return;
     await fetch(`/api/knowledge/article/${id}`, { method: 'DELETE' });
     await loadArticles();
 }

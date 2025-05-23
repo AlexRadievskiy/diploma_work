@@ -39,7 +39,7 @@ function buildChart(ctxId, type, labels, values, label, bg) {
     if (values.length === 0) {
         const msg = document.createElement('div');
         msg.className = 'no-data';
-        msg.textContent = 'No Data\nTry adjusting the date range above.';
+        msg.textContent = 'Немає даних\nСпробуйте змінити діапазон дат вище.';
         container.innerHTML = '';
         container.appendChild(msg);
         return;
@@ -76,10 +76,10 @@ async function loadAnalytics() {
     if (from && to) url += `?from=${from}&to=${to}`;
 
     const email = getCookie("user_email");
-    debug('Email from cookie:', email);
+    debug('Email з cookie:', email);
 
     if (!email) {
-        debug('Email not found in cookie. Redirecting...');
+        debug('Email не знайдено в cookie. Перенаправлення...');
         window.location.href = '/';
         return;
     }
@@ -87,25 +87,25 @@ async function loadAnalytics() {
     const res = await fetch(`/api/is-support-agent?email=${encodeURIComponent(email)}`);
     const data = await res.json();
 
-    debug('Support agent access level:', data);
+    debug('Рівень доступу співробітника:', data);
 
     if (!data || !['senior', 'admin'].includes(data.access_level)) {
-        alert('Access denied. Only senior or admin can view analytics.');
+        alert('Доступ заборонено. Тільки для старших або адміністраторів.');
         window.location.href = '/';
         return;
     }
 
     fetch(url)
         .then(res => {
-            debug('Analytics API response status:', res.status);
+            debug('Статус відповіді API аналітики:', res.status);
             return res.json();
         })
         .then(data => {
-            debug('Analytics data received:', data);
-            buildChart('statusChart', 'doughnut', data.statusBreakdown.map(s => s.status), data.statusBreakdown.map(s => s.count), 'Ticket Status');
-            buildChart('priorityChart', 'bar', data.priorityBreakdown.map(p => p.priority), data.priorityBreakdown.map(p => p.count), 'Ticket Priority');
-            buildChart('agentChart', 'bar', data.agentLoad.map(a => a.name), data.agentLoad.map(a => a.count), 'Agent Activity');
-            buildChart('categoryChart', 'bar', data.categoryUsage.map(c => c.name), data.categoryUsage.map(c => c.count), 'Tickets by Category');
+            debug('Отримані аналітичні дані:', data);
+            buildChart('statusChart', 'doughnut', data.statusBreakdown.map(s => s.status), data.statusBreakdown.map(s => s.count), 'Статус тікетів');
+            buildChart('priorityChart', 'bar', data.priorityBreakdown.map(p => p.priority), data.priorityBreakdown.map(p => p.count), 'Пріоритет тікетів');
+            buildChart('agentChart', 'bar', data.agentLoad.map(a => a.name), data.agentLoad.map(a => a.count), 'Активність співробітників');
+            buildChart('categoryChart', 'bar', data.categoryUsage.map(c => c.name), data.categoryUsage.map(c => c.count), 'Тікети за категоріями');
         })
         .catch(err => {
             console.error('[❌]', err);
@@ -113,7 +113,7 @@ async function loadAnalytics() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    debug('DOM loaded');
+    debug('DOM завантажено');
     await loadAnalytics();
     document.getElementById('apply-filter').addEventListener('click', loadAnalytics);
     document.getElementById('reset-filter').addEventListener('click', resetFilter);

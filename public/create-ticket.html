@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Create Support Ticket</title>
+    <title>Створити Запит до Підтримки</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -102,32 +102,32 @@
 <header></header>
 
 <main class="form-container">
-    <h2>Create a Support Ticket</h2>
+    <h2>Створити Запит до Підтримки</h2>
     <form id="ticket-form">
         <div class="form-group">
-            <label for="category">Category:</label>
+            <label for="category">Категорія:</label>
             <select id="category" name="category_id" required></select>
         </div>
 
         <div class="form-group">
-            <label for="title">Title:</label>
+            <label for="title">Заголовок:</label>
             <input type="text" id="title" name="title" required />
         </div>
 
         <div class="form-group">
-            <label for="description">Description:</label>
+            <label for="description">Опис:</label>
             <textarea id="description" name="description" rows="4"></textarea>
         </div>
 
         <div id="dynamic-fields"></div>
 
-        <button type="submit"><i class="fas fa-paper-plane"></i> Submit Ticket</button>
+        <button type="submit"><i class="fas fa-paper-plane"></i> Надіслати Запит</button>
 
         <div class="rules-note">
-            ⚠️ <strong>Support Rules:</strong> Please be respectful and clear in your communication. Abuse or spam will result in account suspension.
+            ⚠️ <strong>Правила Підтримки:</strong> Будьте ввічливі та чіткі у зверненні. Образи або спам призведуть до блокування акаунту.
         </div>
 
-        <div id="success-message">✅ Ticket successfully created! Check your email.</div>
+        <div id="success-message">✅ Запит успішно створено! Перевірте вашу пошту.</div>
     </form>
 </main>
 
@@ -137,11 +137,10 @@
 <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
 <script src="loadHeaderFooter.js"></script>
 
-
 <script>
     const userEmail = getCookie('user_email');
     if (!userEmail) {
-        alert("Please log in to create a ticket.");
+        alert("Будь ласка, увійдіть у систему, щоб створити запит.");
         window.location.href = "/";
     }
 
@@ -242,10 +241,9 @@
             document.getElementById('success-message').style.display = 'block';
             document.getElementById('ticket-form').reset();
         } else {
-            alert('Ticket creation error: ' + (result.error || 'Unknown error'));
+            alert('Помилка створення запиту: ' + (result.error || 'Невідома помилка'));
         }
     });
-
 
     loadCategories();
 </script>

@@ -5,6 +5,7 @@ const marked = require('marked');
 const cookieParser = require('cookie-parser');
 const { OAuth2Client } = require('google-auth-library');
 const { sendTicketConfirmation } = require('./mail');
+const { sendTicketReply } = require('./mail');
 const { startListeningForEmails } = require('./imapService');
 const multer = require('multer');
 const path = require('path');
@@ -451,8 +452,6 @@ app.get('/api/support/tickets', async (req, res) => {
     }
 });
 
-
-// ... ответ от саппорта
 app.post('/api/support/tickets/:id/reply', upload.single('file'), async (req, res) => {
     const ticketId = req.params.id;
     const { support_email, message } = req.body;
@@ -473,6 +472,8 @@ app.post('/api/support/tickets/:id/reply', upload.single('file'), async (req, re
         const [ticketRows] = await pool.query(`SELECT * FROM tickets WHERE id = ?`, [ticketId]);
         if (ticketRows.length === 0) return res.status(404).json({ error: 'Ticket not found' });
 
+        const ticket = ticketRows[0];
+
         const [msgResult] = await pool.query(`
             INSERT INTO ticket_messages (ticket_id, sender_role, message, support_staff_id)
             VALUES (?, 'support', ?, ?)
@@ -489,6 +490,21 @@ app.post('/api/support/tickets/:id/reply', upload.single('file'), async (req, re
         }
 
         await pool.query(`UPDATE tickets SET status = 'in_progress' WHERE id = ?`, [ticketId]);
+
+        // Отправка email-уведомления пользователю
+        if (message && message.trim()) {
+            const [userRows] = await pool.query(`
+                SELECT u.email, t.title
+                FROM tickets t
+                JOIN users u ON t.user_id = u.id
+                WHERE t.id = ?
+            `, [ticketId]);
+
+            if (userRows.length) {
+                const { email, title } = userRows[0];
+                await sendTicketReply(email, title, ticketId, message.trim());
+            }
+        }
 
         res.json({ success: true });
     } catch (err) {

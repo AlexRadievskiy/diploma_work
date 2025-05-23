@@ -94,7 +94,7 @@ function initGoogleLogin() {
 }
 
 async function handleCredentialResponse(response) {
-    console.log('[🔥 handleCredentialResponse]', response);
+    console.log('[🔥 Отримано відповідь від Google]', response);
 
     const res = await fetch('/api/auth/google', {
         method: 'POST',
@@ -103,17 +103,17 @@ async function handleCredentialResponse(response) {
     });
 
     const data = await res.json();
-    console.log('[✅ backend]', data);
+    console.log('[✅ Відповідь від бекенду]', data);
 
     if (data.name && data.email) {
-        console.log('[✅]');
+        console.log('[✅ Успішна автентифікація]');
         setCookie('user_name', data.name);
         setCookie('user_email', data.email);
         if (data.picture) {
             setCookie('user_avatar', data.picture);
         }
 
-        console.log('[🔁 initializeHeaderFooter restart]');
+        console.log('[🔁 Перезапуск initializeHeaderFooter]');
         await initializeHeaderFooter();
 
         const loader = document.getElementById('auth-loader');
@@ -123,7 +123,7 @@ async function handleCredentialResponse(response) {
             location.href = '/';
         }, 1500);
     } else {
-        console.warn('[⚠️]');
+        console.warn('[⚠️ Помилка автентифікації]');
     }
 }
 
@@ -134,12 +134,12 @@ function signOut() {
 
     if (profileBlock) profileBlock.classList.add("hidden");
     if (signin) signin.classList.remove("hidden");
-    initGoogleLogin(); // обязательно перерисовать кнопку
+    initGoogleLogin();
     location.reload();
 }
 
 async function initializeHeaderFooter() {
-    console.log('[➡️ initializeHeaderFooter старт]');
+    console.log('[➡️ Запуск initializeHeaderFooter]');
     await loadTemplate('/templates/header.html', 'header');
     await loadTemplate('/templates/footer.html', 'footer');
 
@@ -153,13 +153,13 @@ async function initializeHeaderFooter() {
     if (signOutBtn) signOutBtn.style.display = 'none';
     if (myTicketsBtn) myTicketsBtn.classList.add('hidden');
 
-    console.log('[🔍 cookies]', { name, email, avatar });
+    console.log('[🔍 Перевірка cookie]', { name, email, avatar });
 
     if (name && email) {
         showUser(name, avatar);
         await checkSupportAgent(email);
     } else {
-        console.log('[🔐 No auth, start Google auth]');
+        console.log('[🔐 Користувач не авторизований, запуск Google автентифікації]');
         initGoogleLogin();
     }
 
@@ -172,7 +172,7 @@ async function initializeHeaderFooter() {
 
 window.addEventListener('message', async (event) => {
     if (event.data?.type === 'googleLogin') {
-        console.log('[📩 Get credential from postMessage]', event.data);
+        console.log('[📩 Отримано облікові дані через postMessage]', event.data);
 
         const res = await fetch('/api/auth/google', {
             method: 'POST',
@@ -181,7 +181,7 @@ window.addEventListener('message', async (event) => {
         });
 
         const data = await res.json();
-        console.log('[✅ backend]', data);
+        console.log('[✅ Відповідь від бекенду]', data);
 
         if (data.name && data.email) {
             setCookie('user_name', data.name);

@@ -36,7 +36,7 @@ async function startListeningForEmails() {
                 !/^To:/.test(line) &&
                 !/^Subject:/.test(line) &&
                 !/^---+/.test(line) &&
-                !/^Сб, .*г\./i.test(line)
+                !/^[а-яА-Я]{2},? \d{1,2} [а-яА-Я]+\.? \d{4}.*г\./i.test(line)
             )
             .join('\n')
             .trim();

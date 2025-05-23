@@ -1,4 +1,3 @@
-
 function getCookie(name) {
     const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? decodeURIComponent(match[2]) : null;
@@ -18,13 +17,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!username) {
                 const signin = document.getElementById('g_id_signin');
                 if (signin) signin.scrollIntoView({ behavior: 'smooth' });
-                alert('Pls. Sign-in to create ticket');
+                alert('Будь ласка, увійдіть, щоб створити звернення');
                 return;
             }
             window.location.href = 'create-ticket.html';
         });
     }
-
 });
 
 async function loadContent() {

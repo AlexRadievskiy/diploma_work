@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Support Panel</title>
+    <title>Панель Підтримки</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -83,18 +83,9 @@
             align-self: flex-start;
         }
 
-        .status.open {
-            background-color: #28a745;
-        }
-
-        .status.in_progress {
-            background-color: #ffc107;
-            color: #212529;
-        }
-
-        .status.closed {
-            background-color: #dc3545;
-        }
+        .status.open { background-color: #28a745; }
+        .status.in_progress { background-color: #ffc107; color: #212529; }
+        .status.closed { background-color: #dc3545; }
 
         .open-ticket-btn {
             align-self: flex-start;
@@ -117,18 +108,9 @@
             transform: scale(1.05);
         }
 
-        /* Цветные полоски статусов */
-        .ticket-block.open::before {
-            background-color: #28a745;
-        }
-
-        .ticket-block.in_progress::before {
-            background-color: #ffc107;
-        }
-
-        .ticket-block.closed::before {
-            background-color: #dc3545;
-        }
+        .ticket-block.open::before { background-color: #28a745; }
+        .ticket-block.in_progress::before { background-color: #ffc107; }
+        .ticket-block.closed::before { background-color: #dc3545; }
 
         .ticket-header {
             display: flex;
@@ -138,14 +120,14 @@
 
         .ticket-header h4 {
             margin: 0;
-            line-height: 1; /* Добавлено */
+            line-height: 1;
         }
 
         .status {
             white-space: nowrap;
-            display: inline-flex; /* Добавлено */
-            align-items: center;  /* Добавлено */
-            justify-content: center; /* Добавлено */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -154,22 +136,22 @@
 <header class="header"></header>
 
 <main class="container">
-    <h2>🛠️ Support Panel</h2>
+    <h2>🛠️ Панель Підтримки</h2>
 
     <div class="filter-section">
-        <label for="filter-status">Filter by status:</label>
+        <label for="filter-status">Фільтр за статусом:</label>
         <select id="filter-status">
-            <option value="">All</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="closed">Closed</option>
+            <option value="">Усі</option>
+            <option value="open">Відкриті</option>
+            <option value="in_progress">В обробці</option>
+            <option value="closed">Закриті</option>
         </select>
 
-        <label for="search-email">Search by email:</label>
+        <label for="search-email">Пошук за email:</label>
         <input type="text" id="search-email" placeholder="user@example.com" />
     </div>
 
-    <div id="ticket-container" class="tickets-grid">Loading tickets...</div>
+    <div id="ticket-container" class="tickets-grid">Завантаження тікетів...</div>
 </main>
 
 <footer class="footer"></footer>
@@ -182,7 +164,7 @@
     function renderTickets(tickets) {
         const ticketContainer = document.getElementById('ticket-container');
         if (!tickets.length) {
-            ticketContainer.innerHTML = '<p>No tickets found.</p>';
+            ticketContainer.innerHTML = '<p>Тікети не знайдено.</p>';
             return;
         }
 
@@ -192,13 +174,13 @@
             div.className = `ticket-block ${ticket.status.toLowerCase().replace(' ', '_')}`;
             div.innerHTML = `
                 <h4>[#${ticket.id}] ${ticket.title}</h4>
-                <p><strong>User:</strong> ${ticket.user_name} (${ticket.user_email})</p>
-                <p><strong>Created:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
-                <p><strong>Last update:</strong> ${new Date(ticket.last_message_date || ticket.update_date).toLocaleString()}</p>
+                <p><strong>Користувач:</strong> ${ticket.user_name} (${ticket.user_email})</p>
+                <p><strong>Створено:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
+                <p><strong>Оновлено:</strong> ${new Date(ticket.last_message_date || ticket.update_date).toLocaleString()}</p>
                 <span class="status ${ticket.status.toLowerCase().replace(' ', '_')}">${ticket.status}</span>
-                <p><strong>Last message:</strong> ${ticket.last_message ? ticket.last_message.slice(0, 80) + '...' : 'No messages yet'}</p>
+                <p><strong>Останнє повідомлення:</strong> ${ticket.last_message ? ticket.last_message.slice(0, 80) + '...' : 'Повідомлень ще немає'}</p>
                 <button class="open-ticket-btn" data-id="${ticket.id}">
-                    <i class="fas fa-comments"></i> Open Chat
+                    <i class="fas fa-comments"></i> Відкрити чат
                 </button>
             `;
             ticketContainer.appendChild(div);

@@ -1,33 +1,32 @@
 <header class="header">
     <div class="container header-content">
-        <h1 class="logo" onclick="location.href='/'" style="cursor:pointer;">Help Centre</h1>
+        <h1 class="logo" onclick="location.href='/'" style="cursor:pointer;">Центр Допомоги</h1>
         <div id="user-info" class="user-area">
             <div class="nav-buttons">
                 <button id="create-ticket-btn" class="btn">
-                    <i class="fas fa-plus-circle"></i> Create
+                    <i class="fas fa-plus-circle"></i> Створити
                 </button>
 
                 <a id="my-tickets-btn" href="/my-tickets.html" class="btn hidden">
-                    <i class="fas fa-list"></i> My Tickets
+                    <i class="fas fa-list"></i> Мої звернення
                 </a>
 
-                <!-- ▼ Admin Dropdown -->
                 <div id="admin-dropdown" class="dropdown hidden">
                     <button class="btn dropdown-toggle">
-                        <i class="fas fa-user-cog"></i> Admin Panel
+                        <i class="fas fa-user-cog"></i> Адмін-панель
                     </button>
                     <div class="dropdown-menu">
                         <a id="support-panel-btn" href="/support-panel.html" class="dropdown-item hidden">
-                            <i class="fas fa-tools"></i> Tickets
+                            <i class="fas fa-tools"></i> Звернення
                         </a>
                         <a id="manage-roles-btn" href="/manage-roles.html" class="dropdown-item hidden">
-                            <i class="fas fa-user-shield"></i> Manage Roles
+                            <i class="fas fa-user-shield"></i> Ролі
                         </a>
                         <a id="manage-articles-btn" href="/manage-articles.html" class="dropdown-item hidden">
-                            <i class="fas fa-pen-nib"></i> Articles
+                            <i class="fas fa-pen-nib"></i> Статті
                         </a>
                         <a id="analytics-btn" href="/analytics.html" class="dropdown-item hidden">
-                            <i class="fas fa-chart-line"></i> Analytics
+                            <i class="fas fa-chart-line"></i> Аналітика
                         </a>
                     </div>
                 </div>
@@ -50,7 +49,7 @@
 
 <div id="auth-loader" class="global-loader hidden">
     <div class="loader-content">
-        <div class="loader-text">Authorisation...</div>
+        <div class="loader-text">Авторизація...</div>
         <div class="spinner"></div>
     </div>
 </div>

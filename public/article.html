@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Article</title>
+    <title>Стаття</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <style>
@@ -40,12 +40,12 @@
 
 <header class="header">
     <div class="container header-content">
-        <h1 onclick="location.href='http://localhost:3000'" style="cursor:pointer;">Help Centre</h1>
+        <h1 onclick="location.href='http://localhost:3000'" style="cursor:pointer;">Центр Допомоги</h1>
         <div id="user-info">
             <div id="g_id_signin"></div>
             <span id="user-name"></span>
-            <button id="create-ticket-btn">Create Support Request</button>
-            <a id="support-panel-btn" href="support-panel.html" class="hidden">Support Panel</a>
+            <button id="create-ticket-btn">Створити Запит</button>
+            <a id="support-panel-btn" href="support-panel.html" class="hidden">Панель Підтримки</a>
         </div>
     </div>
 </header>
@@ -57,14 +57,14 @@
         </button>
         <h1 id="article-title"></h1>
     </div>
-    <p><strong>Created:</strong> <span id="created-date"></span></p>
-    <p><strong>Updated:</strong> <span id="updated-date"></span></p>
+    <p><strong>Створено:</strong> <span id="created-date"></span></p>
+    <p><strong>Оновлено:</strong> <span id="updated-date"></span></p>
     <div id="article-content"></div>
 </main>
 
 <footer class="footer">
     <div class="container footer-content">
-        <p>&copy; 2025 Tech. Support Site. No Rights Reserved.</p>
+        <p>&copy; 2025 Сайт Тех. Підтримки. Усі права не захищені.</p>
     </div>
 </footer>
 
@@ -84,7 +84,7 @@
             document.getElementById('article-content').innerHTML = data.text_html;
         })
         .catch(() => {
-            document.getElementById('article-content').innerHTML = '<p>Article not found or hidden</p>';
+            document.getElementById('article-content').innerHTML = '<p>Статтю не знайдено або вона прихована</p>';
         });
 </script>
 

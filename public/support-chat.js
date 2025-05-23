@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const ticketId = params.get('id');
-    if (!ticketId) return alert('Missing ticket ID');
+    if (!ticketId) return alert('Відсутній ID тікету');
 
     const supportEmail = getCookie('user_email');
-    if (!supportEmail) return alert('Unauthorized');
+    if (!supportEmail) return alert('Неавторизовано');
 
     const ticketInfoDiv = document.getElementById('ticket-info');
     const chatMessagesDiv = document.getElementById('chat-messages');
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchTicketData() {
         const res = await fetch(`/api/tickets/${ticketId}?forSupport=true`);
         if (!res.ok) {
-            alert('Failed to load ticket');
+            alert('Не вдалося завантажити тікет');
             return;
         }
 
@@ -39,23 +39,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.ticket.status !== 'closed') {
             replySection.classList.remove('hidden');
         } else {
-            replySection.innerHTML = '<p><em>This ticket is closed. You cannot reply.</em></p>';
+            replySection.innerHTML = '<p><em>Цей тікет закритий. Ви не можете відповідати.</em></p>';
         }
     }
 
     function renderTicketInfo(ticket) {
         ticketInfoDiv.innerHTML = `
             <h3>${ticket.title}</h3>
-            <p><strong>Status:</strong> ${ticket.status}</p>
-            <p><strong>User:</strong> ${ticket.user_email}</p>
-            <p><strong>Created:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
+            <p><strong>Статус:</strong> ${ticket.status}</p>
+            <p><strong>Користувач:</strong> ${ticket.user_email}</p>
+            <p><strong>Створено:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
         `;
         statusSelect.value = ticket.status;
         noteTextarea.value = ticket.note || '';
     }
 
     function renderFields(fields) {
-        ticketFieldsDiv.innerHTML = '<h4>📝 Ticket Fields</h4>';
+        ticketFieldsDiv.innerHTML = '<h4>📝 Поля Тікету</h4>';
         for (const field of fields) {
             const div = document.createElement('div');
             div.className = 'field-block';
@@ -71,8 +71,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             div.className = 'chat-message ' + evt.sender_role;
 
             let sender = evt.sender_role === 'support'
-                ? (evt.agent_name || 'Support')
-                : 'Customer';
+                ? (evt.agent_name || 'Підтримка')
+                : 'Користувач';
 
             if (evt.type === 'message') {
                 if (!evt.message) continue;
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fileInput.value = '';
             await fetchTicketData();
         } else {
-            alert(result.error || 'Error sending message');
+            alert(result.error || 'Помилка при надсиланні повідомлення');
         }
     });
 
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         const result = await res.json();
-        alert(result.success ? 'Note saved!' : result.error || 'Error saving note');
+        alert(result.success ? 'Нотатку збережено!' : result.error || 'Помилка при збереженні нотатки');
     };
 
     changeStatusBtn.onclick = async () => {
@@ -144,15 +144,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const result = await res.json();
         if (result.success) {
-            alert('Status updated');
+            alert('Статус оновлено');
             await fetchTicketData();
         } else {
-            alert(result.error || 'Error updating status');
+            alert(result.error || 'Помилка при оновленні статусу');
         }
     };
 
     blockUserBtn.onclick = async () => {
-        if (!confirm('Are you sure you want to block this user?')) return;
+        if (!confirm('Ви впевнені, що хочете заблокувати цього користувача?')) return;
 
         const res = await fetch(`/api/support/users/block`, {
             method: 'POST',
@@ -162,10 +162,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const result = await res.json();
         if (result.success) {
-            alert('User blocked and all tickets closed');
+            alert('Користувача заблоковано, усі тікети закрито');
             await fetchTicketData();
         } else {
-            alert(result.error || 'Error blocking user');
+            alert(result.error || 'Помилка при блокуванні користувача');
         }
     };
 

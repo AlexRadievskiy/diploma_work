@@ -5,9 +5,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchTickets(status = '', emailFilter = '') {
         const supportEmail = getCookie('user_email');
-        if (!supportEmail) return alert('Support email not found in cookies');
+        if (!supportEmail) return alert('Email підтримки не знайдено у cookies');
 
-        ticketContainer.innerHTML = 'Loading...';
+        ticketContainer.innerHTML = 'Завантаження...';
         let url = `/api/support/tickets?email=${encodeURIComponent(supportEmail)}`;
         if (status) url += `&status=${status}`;
         if (emailFilter) url += `&user=${encodeURIComponent(emailFilter)}`;
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderTickets(tickets) {
         const ticketContainer = document.getElementById('ticket-container');
         if (!tickets.length) {
-            ticketContainer.innerHTML = '<p>No tickets found.</p>';
+            ticketContainer.innerHTML = '<p>Тікети не знайдено.</p>';
             return;
         }
 
@@ -31,19 +31,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const div = document.createElement('div');
             div.className = `ticket-block ${statusClass}`;
             div.innerHTML = `
-            <div class="ticket-header">
-                <span class="status ${statusClass}">${ticket.status}</span>
-                <h4>[#${ticket.id}] ${ticket.title}</h4>
-            </div>
+                <div class="ticket-header">
+                    <span class="status ${statusClass}">${ticket.status}</span>
+                    <h4>[#${ticket.id}] ${ticket.title}</h4>
+                </div>
 
-            <p><strong>User:</strong> ${ticket.user_name} (${ticket.user_email})</p>
-            <p><strong>Created:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
-            <p><strong>Last update:</strong> ${new Date(ticket.last_message_date || ticket.update_date).toLocaleString()}</p>
-            <p><strong>Last message:</strong> ${ticket.last_message ? ticket.last_message.slice(0, 80) + '...' : 'No messages yet'}</p>
-            <button class="open-ticket-btn" data-id="${ticket.id}">
-                <i class="fas fa-comments"></i> Open Chat
-            </button>
-        `;
+                <p><strong>Користувач:</strong> ${ticket.user_name} (${ticket.user_email})</p>
+                <p><strong>Створено:</strong> ${new Date(ticket.creation_date).toLocaleString()}</p>
+                <p><strong>Оновлено:</strong> ${new Date(ticket.last_message_date || ticket.update_date).toLocaleString()}</p>
+                <p><strong>Останнє повідомлення:</strong> ${ticket.last_message ? ticket.last_message.slice(0, 80) + '...' : 'Повідомлень ще немає'}</p>
+                <button class="open-ticket-btn" data-id="${ticket.id}">
+                    <i class="fas fa-comments"></i> Відкрити чат
+                </button>
+            `;
             ticketContainer.appendChild(div);
         });
 

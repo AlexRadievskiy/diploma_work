@@ -1,5 +1,3 @@
-// ticket.js
-
 document.addEventListener('DOMContentLoaded', async () => {
     if (window.location.pathname.endsWith('ticket.html')) {
         await loadTicketPage();
@@ -12,7 +10,7 @@ async function loadTicketPage() {
     const userEmail = getCookie('user_email');
 
     if (!ticketId || !userEmail) {
-        alert("Error: insufficient data.");
+        alert("Помилка: недостатньо даних.");
         window.location.href = "/";
         return;
     }
@@ -24,7 +22,7 @@ async function loadTicketPage() {
         const data = await res.json();
 
         if (!data || !data.ticket) {
-            alert('Ticket not found or access denied');
+            alert('Звернення не знайдено або доступ заборонено');
             window.location.href = "/";
             return;
         }
@@ -51,33 +49,31 @@ async function loadTicketPage() {
         }
 
         data.events.forEach(evt => {
-            if (evt.type === 'message' && (!evt.message || evt.message.trim() === '')) {
-                return;
-            }
+            if (evt.type === 'message' && (!evt.message || evt.message.trim() === '')) return;
 
             const div = document.createElement('div');
             div.className = 'msg ' + (evt.sender_role === 'support' ? 'support' : 'customer');
 
-            let senderLabel = 'You';
+            let senderLabel = 'Ви';
             if (evt.sender_role === 'support') {
-                senderLabel = evt.agent_name ? evt.agent_name : 'Support';
+                senderLabel = evt.agent_name ? evt.agent_name : 'Підтримка';
             }
 
             if (evt.type === 'message') {
                 div.innerHTML = `
-            <strong>${senderLabel}:</strong><br>
-            ${evt.message}<br>
-            <small>${new Date(evt.created_date).toLocaleString()}</small>
-        `;
+                    <strong>${senderLabel}:</strong><br>
+                    ${evt.message}<br>
+                    <small>${new Date(evt.created_date).toLocaleString()}</small>
+                `;
             } else if (evt.type === 'attachment') {
                 const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(evt.file_path);
                 div.innerHTML = `
-            <strong>${senderLabel}:</strong><br>
-            ${isImage
+                    <strong>${senderLabel}:</strong><br>
+                    ${isImage
                     ? `<img src="${evt.file_path}" style="max-width:300px;"><br>`
                     : `<a href="${evt.file_path}" target="_blank">${evt.file_name}</a><br>`}
-            <small>${new Date(evt.created_date).toLocaleString()}</small>
-        `;
+                    <small>${new Date(evt.created_date).toLocaleString()}</small>
+                `;
             }
 
             msgBox.appendChild(div);
@@ -96,13 +92,13 @@ async function loadTicketPage() {
             textArea.disabled = true;
             fileInput.disabled = true;
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Ticket Closed';
+            submitBtn.textContent = 'Звернення закрите';
             submitBtn.style.backgroundColor = '#6c757d';
             submitBtn.style.cursor = 'not-allowed';
         } else {
             closeBtn.style.display = 'block';
             closeBtn.onclick = async () => {
-                if (!confirm('Are you sure you want to close the ticket?')) return;
+                if (!confirm('Ви дійсно хочете закрити звернення?')) return;
                 const res = await fetch(`/api/support/tickets/${ticketId}/status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -110,10 +106,10 @@ async function loadTicketPage() {
                 });
                 const result = await res.json();
                 if (result.success) {
-                    alert('Ticket closed');
+                    alert('Звернення закрито');
                     await loadTicket();
                 } else {
-                    alert('Failed to close the ticket');
+                    alert('Не вдалося закрити звернення');
                 }
             };
         }
@@ -128,7 +124,7 @@ async function loadTicketPage() {
         const dataStatus = await resStatus.json();
 
         if (!dataStatus || !dataStatus.ticket || dataStatus.ticket.status.toLowerCase() === 'closed') {
-            alert('Ticket is closed. Cannot send message.');
+            alert('Звернення закрите. Надсилання повідомлення неможливе.');
             await loadTicket();
             return;
         }
@@ -154,7 +150,7 @@ async function loadTicketPage() {
             if (fileInput) fileInput.value = '';
             await loadTicket();
         } else {
-            alert('Failed to send message');
+            alert('Не вдалося надіслати повідомлення');
         }
     });
 }

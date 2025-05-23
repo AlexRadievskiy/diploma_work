@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>User Ticket Chat</title>
+    <title>Чат Звернення</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-
         .container {
             flex: 1;
             max-width: 1200px;
@@ -35,16 +34,13 @@
         .status {
             color: #fff !important;
         }
-
         .status.open {
             background-color: #28a745 !important;
         }
-
         .status.in_progress {
             background-color: #ffc107 !important;
             color: #212529 !important;
         }
-
         .status.closed {
             background-color: #dc3545 !important;
         }
@@ -138,17 +134,17 @@
     <div class="left-column">
         <div class="ticket-info">
             <h2 id="ticket-title"></h2>
-            <p><strong>Status:</strong> <span id="ticket-status" class="status"></span></p>
+            <p><strong>Статус:</strong> <span id="ticket-status" class="status"></span></p>
         </div>
 
         <div class="ticket-fields">
-            <h3><i class="fas fa-list"></i> Ticket Fields</h3>
+            <h3><i class="fas fa-list"></i> Поля звернення</h3>
             <p id="ticket-description"></p>
             <div id="ticket-fields"></div>
         </div>
 
         <div class="ticket-actions">
-            <button class="close-ticket-btn" id="close-ticket-btn">Закрыть тикет</button> <!-- Реальная кнопка -->
+            <button class="close-ticket-btn" id="close-ticket-btn">Закрити звернення</button>
         </div>
     </div>
 
@@ -156,13 +152,12 @@
         <div id="messages" class="messages-box"></div>
 
         <form id="message-form" class="reply-form">
-            <textarea id="message-text" placeholder="Введите сообщение..." rows="4"></textarea>
+            <textarea id="message-text" placeholder="Введіть повідомлення..." rows="4"></textarea>
             <input type="file" id="message-file" accept="image/*">
-            <button type="submit">Отправить <i class="fas fa-paper-plane"></i></button>
+            <button type="submit">Надіслати <i class="fas fa-paper-plane"></i></button>
         </form>
     </div>
 </div>
-
 
 <footer class="footer"></footer>
 
