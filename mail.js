@@ -19,49 +19,56 @@ async function sendTicketConfirmation(to, ticketTitle, ticketId) {
     const url = `${process.env.BASE_URL}/ticket.html?id=${ticketId}`;
 
     await transporter.sendMail({
-        from: `"Support Team" <${process.env.EMAIL_USER}>`,
+        from: `"Служба підтримки" <${process.env.EMAIL_USER}>`,
         to,
-        subject: `[Ticket #${ticketId}] ${ticketTitle} Confirmation`,
+        subject: `[Заявка №${ticketId}] ${ticketTitle} — Підтвердження`,
         html: `
             <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
                 <div style="text-align: center; margin-bottom: 20px;">
-                    <img src="https://images.ixigo.com/image/upload/why-ixigo/5390cf1e5644eced244bb1a8006bd040-syxpz.png" alt="Company Logo" style="max-width: 100%; height: auto;">
+                    <img src="https://images.ixigo.com/image/upload/why-ixigo/5390cf1e5644eced244bb1a8006bd040-syxpz.png" alt="Логотип компанії" style="max-width: 100%; height: auto;">
                 </div>
-                <h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Ticket Confirmation</h2>
-                <p>Dear Customer,</p>
-                <p>We have successfully received your support ticket. Below are the details for your reference:</p>
+                <h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Підтвердження заявки</h2>
+                <p>Шановний(а) користувачу,</p>
+                <p>Ми успішно отримали вашу заявку до служби підтримки. Нижче наведені деталі для вашого ознайомлення:</p>
                 <p>
-                    <strong>Title:</strong> ${ticketTitle}<br>
-                    <strong>Ticket ID:</strong> ${ticketId}
+                    <strong>Назва:</strong> ${ticketTitle}<br>
+                    <strong>ID заявки:</strong> ${ticketId}
                 </p>
                 <p>
-                    You can view and manage your ticket by clicking on the following link:
+                    Ви можете переглянути або керувати своєю заявкою за наступним посиланням:
                     <br>
-                    <a href="${url}" style="color: #1a73e8; text-decoration: none;">View Your Ticket</a>
+                    <a href="${url}" style="color: #1a73e8; text-decoration: none;">Переглянути заявку</a>
                 </p>
-                <p>If you have any additional questions or require further assistance, please do not hesitate to contact our support team by replying to this email.</p>
-                <p>Thank you for choosing our services.</p>
-                <p>Sincerely,<br>The Support Team</p>
+                <p>Якщо у вас виникнуть додаткові питання або потрібна допомога, просто відповідайте на цей лист — наша команда вам допоможе.</p>
+                <p>Дякуємо, що обрали наш сервіс.</p>
+                <p>З повагою,<br>Команда підтримки</p>
             </div>
         `
     });
 }
 
+/**
+ * Функція для відправлення відповіді на заявку.
+ * @param {string} to - Адреса отримувача
+ * @param {string} ticketTitle - Назва заявки
+ * @param {number|string} ticketId - Ідентифікатор заявки
+ * @param {string} message - Повідомлення від служби підтримки
+ */
 async function sendTicketReply(to, ticketTitle, ticketId, message) {
     const url = `${process.env.BASE_URL}/ticket.html?id=${ticketId}`;
 
     await transporter.sendMail({
-        from: `"Support Team" <${process.env.EMAIL_USER}>`,
+        from: `"Служба підтримки" <${process.env.EMAIL_USER}>`,
         to,
-        subject: `[Ticket #${ticketId}] Response from Support`,
+        subject: `[Заявка №${ticketId}] Відповідь від служби підтримки`,
         html: `
             <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                <h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">New Reply on Your Ticket</h2>
-                <p>Your ticket <strong>${ticketTitle}</strong> has received a response from our support team:</p>
+                <h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">Нова відповідь на вашу заявку</h2>
+                <p>На вашу заявку <strong>${ticketTitle}</strong> була надана відповідь від нашої служби підтримки:</p>
                 <blockquote style="background:#f9f9f9;padding:10px;border-left:3px solid #ccc;">${message}</blockquote>
-                <p>You can reply by responding to this email or using the chat interface below:</p>
+                <p>Ви можете відповісти, надіславши листа у відповідь, або скористатися інтерфейсом чату за посиланням нижче:</p>
                 <p><a href="${url}">${url}</a></p>
-                <p>Sincerely,<br>The Support Team</p>
+                <p>З повагою,<br>Команда підтримки</p>
             </div>
         `
     });
